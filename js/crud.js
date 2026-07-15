@@ -3,16 +3,14 @@
 // Operações de criação, atualização e remoção de registros
 // ════════════════════════════════════════════════════════════
 
-const STATUS_FLOW = ['pendente', 'separando', 'embalado', 'despachado'];
-
 /* ── Pedidos ─────────────────────────────────────────────── */
 function salvarPedido() {
-  const ml    = gv('np-ml').trim();
-  const sku   = gv('np-sku').trim();
-  const resp  = gv('np-resp');
-  const qtd   = Number(gv('np-qtd')) || 1;
-  const valor = Number(gv('np-valor')) || 0;
-  const col   = gv('np-coleta');
+  const ml    = getInputValue('np-ml').trim();
+  const sku   = getInputValue('np-sku').trim();
+  const resp  = getInputValue('np-resp');
+  const qtd   = Math.max(1, parseInt(getInputValue('np-qtd'), 10) || 1);
+  const valor = parseMoney(getInputValue('np-valor'));
+  const col   = getInputValue('np-coleta');
 
   if (!ml || !sku) { showToast('Preencha o Nº do pedido e o SKU.', 'danger'); return; }
 
@@ -20,7 +18,7 @@ function salvarPedido() {
   DB.pedidos.push({
     id: uid(), ml, sku, produto: prodNome,
     qtd, resp, coleta: col, valor,
-    status: 'pendente', criadoEm: today(),
+    status: STATUS_FLOW[0], criadoEm: today(),
   });
   saveDB(); renderAll(); closeModal('modal-pedido');
   ['np-ml','np-sku','np-valor','np-coleta'].forEach(id => setVal(id,''));
@@ -57,17 +55,19 @@ function removerPedido(id) {
 
 /* ── Estoque ─────────────────────────────────────────────── */
 function salvarSKU() {
-  const sku  = gv('sk-sku').trim();
-  const nome = gv('sk-nome').trim();
+  const sku  = getInputValue('sk-sku').trim().toUpperCase();
+  const nome = getInputValue('sk-nome').trim();
   if (!sku || !nome) { showToast('Preencha SKU e nome.', 'danger'); return; }
   if (DB.estoque.find(e => e.sku === sku)) { showToast('SKU já cadastrado!', 'danger'); return; }
 
+  const qtd = parseInt(getInputValue('sk-qtd'), 10) || 0;
+  const min = parseInt(getInputValue('sk-min'), 10) || 5;
   DB.estoque.push({
     sku, nome,
-    local: gv('sk-local').trim(),
-    custo: Number(gv('sk-custo')) || 0,
-    qtd:   Number(gv('sk-qtd'))  || 0,
-    min:   Number(gv('sk-min'))  || 5,
+    local: getInputValue('sk-local').trim(),
+    custo: parseMoney(getInputValue('sk-custo')),
+    qtd:   Math.max(0, qtd),
+    min:   Math.max(0, min),
   });
   saveDB(); renderAll(); closeModal('modal-sku');
   ['sk-sku','sk-nome','sk-local','sk-custo'].forEach(id => setVal(id,''));
@@ -78,10 +78,11 @@ function salvarSKU() {
 function ajustarEstoque(sku) {
   const item = DB.estoque.find(i => i.sku === sku);
   if (!item) return;
-  const novo = prompt(`Nova quantidade para "${item.nome}":`, item.qtd);
+  const novo = prompt(`Nova quantidade para "${item.nome}" (atual: ${item.qtd}):`, item.qtd);
   if (novo === null) return;
-  if (isNaN(Number(novo))) { showToast('Valor inválido.', 'danger'); return; }
-  item.qtd = Number(novo);
+  const n = parseInt(novo, 10);
+  if (!Number.isFinite(n) || n < 0) { showToast('Quantidade inválida. Use um número inteiro ≥ 0.', 'danger'); return; }
+  item.qtd = n;
   saveDB(); renderAll();
   showToast('Estoque atualizado!', 'success');
 }
@@ -95,25 +96,26 @@ function removerSKU(sku) {
 
 /* ── Despesas ────────────────────────────────────────────── */
 function salvarDespesa() {
-  const desc  = gv('nd-desc').trim();
-  const valor = Number(gv('nd-valor'));
-  const data  = gv('nd-data');
-  if (!desc || !valor || !data) { showToast('Preencha todos os campos obrigatórios.', 'danger'); return; }
+  const desc  = getInputValue('nd-desc').trim();
+  const valor = parseMoney(getInputValue('nd-valor'));
+  const data  = getInputValue('nd-data');
+  if (!desc) { showToast('Informe a descrição da despesa.', 'danger'); return; }
+  if (valor <= 0) { showToast('Informe um valor maior que zero.', 'danger'); return; }
+  if (!data) { showToast('Informe a data da despesa.', 'danger'); return; }
 
   const isRec = document.getElementById('nd-recorrente')?.checked;
+  const cat   = getInputValue('nd-cat');
 
   DB.despesas.push({
     id: uid(), descricao: desc, valor,
-    categoria: gv('nd-cat'),
-    data, status: gv('nd-status'),
-    obs: gv('nd-obs').trim(),
+    categoria: cat,
+    data, status: getInputValue('nd-status'),
+    obs: getInputValue('nd-obs').trim(),
     auto: false,
   });
 
   if (isRec) {
-    DB.despesasRecorrentes.push({
-      id: uid(), nome: desc, valor, categoria: gv('nd-cat'),
-    });
+    DB.despesasRecorrentes.push({ id: uid(), nome: desc, valor, categoria: cat });
   }
 
   saveDB(); renderAll(); closeModal('modal-despesa');
@@ -133,12 +135,13 @@ function removerDespesa(id) {
 
 /* ── Despesas Recorrentes ────────────────────────────────── */
 function salvarRecorrente() {
-  const nome  = gv('nr-nome').trim();
-  const valor = Number(gv('nr-valor'));
-  if (!nome || !valor) { showToast('Preencha nome e valor.', 'danger'); return; }
+  const nome  = getInputValue('nr-nome').trim();
+  const valor = parseMoney(getInputValue('nr-valor'));
+  if (!nome) { showToast('Informe o nome da despesa recorrente.', 'danger'); return; }
+  if (valor <= 0) { showToast('Informe um valor maior que zero.', 'danger'); return; }
 
   DB.despesasRecorrentes.push({
-    id: uid(), nome, valor, categoria: gv('nr-cat'),
+    id: uid(), nome, valor, categoria: getInputValue('nr-cat'),
   });
   saveDB(); renderAll(); closeModal('modal-recorrente');
   ['nr-nome','nr-valor'].forEach(id => setVal(id,''));
@@ -154,10 +157,12 @@ function removerRecorrente(id) {
 
 /* ── Receitas Manuais ────────────────────────────────────── */
 function salvarReceitaManual() {
-  const desc  = gv('rm-desc').trim();
-  const valor = Number(gv('rm-valor'));
-  const data  = gv('rm-data');
-  if (!desc || !valor || !data) { showToast('Preencha todos os campos.', 'danger'); return; }
+  const desc  = getInputValue('rm-desc').trim();
+  const valor = parseMoney(getInputValue('rm-valor'));
+  const data  = getInputValue('rm-data');
+  if (!desc) { showToast('Informe a descrição da receita.', 'danger'); return; }
+  if (valor <= 0) { showToast('Informe um valor maior que zero.', 'danger'); return; }
+  if (!data) { showToast('Informe a data da receita.', 'danger'); return; }
 
   DB.receitas.push({ id: uid(), descricao: desc, valor, data, origem: 'manual' });
   saveDB(); renderAll(); closeModal('modal-receita');
@@ -174,12 +179,13 @@ function removerReceita(id) {
 
 /* ── Envios Full ─────────────────────────────────────────── */
 function salvarFull() {
-  const id = gv('ef-id').trim();
+  const id = getInputValue('ef-id').trim();
   if (!id) { showToast('Preencha o ID do envio.', 'danger'); return; }
+  if (DB.enviosFull.find(e => e.id === id)) { showToast('ID de envio já cadastrado!', 'danger'); return; }
   DB.enviosFull.unshift({
-    id, data: gv('ef-data'),
-    volumes: Number(gv('ef-vol')) || 1,
-    status: gv('ef-status'),
+    id, data: getInputValue('ef-data'),
+    volumes: Math.max(1, parseInt(getInputValue('ef-vol'), 10) || 1),
+    status: getInputValue('ef-status'),
   });
   saveDB(); renderAll(); closeModal('modal-full');
   setVal('ef-id','');
@@ -188,26 +194,30 @@ function salvarFull() {
 
 /* ── Horários ────────────────────────────────────────────── */
 function salvarHorarios() {
-  DB.config.hCorte    = gv('hm-corte');
-  DB.config.hDespacho = gv('hm-despacho');
+  DB.config.hCorte    = getInputValue('hm-corte');
+  DB.config.hDespacho = getInputValue('hm-despacho');
   saveDB(); renderAll(); closeModal('modal-horarios');
   showToast('Horários atualizados!', 'success');
 }
 
 /* ── Configurações ───────────────────────────────────────── */
 function salvarConfig() {
-  DB.config.backendUrl     = gv('cfg-backend-url').trim().replace(/\/$/, '');
-  DB.config.taxaML         = Number(gv('cfg-taxa-ml'))   || 12;
-  DB.config.custoEmbalagem = Number(gv('cfg-custo-emb')) || 0;
-  DB.config.nomeEmpresa    = gv('cfg-nome').trim() || 'Rose Artesanatos';
-  DB.config.hCorte         = gv('cfg-h-corte');
-  DB.config.hDespacho      = gv('cfg-h-despacho');
+  const taxa = parseMoney(getInputValue('cfg-taxa-ml'));
+  const emb  = parseMoney(getInputValue('cfg-custo-emb'));
+  DB.config.taxaML         = taxa > 0 && taxa <= 100 ? taxa : 12;
+  DB.config.custoEmbalagem = emb >= 0 ? emb : 0;
+  DB.config.nomeEmpresa    = getInputValue('cfg-nome').trim() || 'Rose Artesanatos';
+  DB.config.hCorte         = getInputValue('cfg-h-corte');
+  DB.config.hDespacho      = getInputValue('cfg-h-despacho');
   saveDB(); renderAll();
   showToast('Configurações salvas!', 'success');
 }
 
-/* ── Helper input ────────────────────────────────────────── */
-function gv(id) {
-  const e = document.getElementById(id);
-  return e ? e.value : '';
+/* ── Helpers de input ────────────────────────────────────── */
+// Alias curto mantido para compatibilidade com chamadas inline no HTML
+const gv = getInputValue;
+
+function getInputValue(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
 }

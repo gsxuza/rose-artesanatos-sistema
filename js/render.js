@@ -19,10 +19,13 @@ function renderAll() {
 /* ── Badges de alerta no sidebar ─────────────────────────── */
 function updateBadges() {
   const pend = DB.pedidos.filter(p => p.status === 'pendente').length;
-  setEl('nb-pedidos', pend > 0 ? pend : '', pend > 0);
+  setEl('pill-pedidos', pend > 0 ? pend : '', pend > 0);
+
+  const baixoEstoque = DB.estoque.filter(i => getEstoqueStatus(i) !== 'ok').length;
+  setEl('pill-estoque', baixoEstoque > 0 ? baixoEstoque : '', baixoEstoque > 0);
 
   const alerts = getAlerts().length;
-  setElVisible('nb-fin', alerts > 0);
+  setElVisible('pill-fin', alerts > 0);
 }
 
 /* ── Dashboard ───────────────────────────────────────────── */
@@ -53,9 +56,9 @@ function renderDashboard() {
   if (recent.length && tbody) {
     tbody.innerHTML = recent.map(p => `
       <tr>
-        <td><span class="sku">${p.ml || '-'}</span></td>
-        <td class="cell-trunc">${p.produto || p.sku || '-'}</td>
-        <td>${p.resp || '-'}</td>
+        <td><span class="sku">${escapeHTML(p.ml || '-')}</span></td>
+        <td class="cell-trunc">${escapeHTML(p.produto || p.sku || '-')}</td>
+        <td>${escapeHTML(p.resp || '-')}</td>
         <td>${badge(p.status)}</td>
         <td>${p.status !== 'despachado'
           ? `<button class="btn btn-ghost btn-xs" onclick="avancarPedido('${p.id}')">→</button>`
@@ -93,13 +96,13 @@ function renderPedidos() {
     tbody.innerHTML = [...list].reverse().map((p, i) => `
       <tr>
         <td class="cell-num">${i + 1}</td>
-        <td><span class="sku">${p.ml || '-'}</span></td>
+        <td><span class="sku">${escapeHTML(p.ml || '-')}</span></td>
         <td>
-          <div class="cell-main">${p.produto || p.sku || '-'}</div>
-          ${p.sku && p.produto ? `<span class="sku" style="font-size:10px">${p.sku}</span>` : ''}
+          <div class="cell-main">${escapeHTML(p.produto || p.sku || '-')}</div>
+          ${p.sku && p.produto ? `<span class="sku" style="font-size:10px">${escapeHTML(p.sku)}</span>` : ''}
         </td>
         <td>${p.qtd || 1}</td>
-        <td>${p.resp || '-'}</td>
+        <td>${escapeHTML(p.resp || '-')}</td>
         <td class="cell-money">${fmt(p.valor)}</td>
         <td>${badge(p.status)}</td>
         <td>
@@ -153,9 +156,9 @@ function renderEstoque() {
       const barColor = st === 'ok' ? 'var(--green-500)' : st === 'baixo' ? 'var(--amber-500)' : 'var(--red-500)';
       return `
         <tr>
-          <td><span class="sku">${item.sku}</span></td>
-          <td class="cell-main">${item.nome}</td>
-          <td class="cell-muted">${item.local || '—'}</td>
+          <td><span class="sku">${escapeHTML(item.sku)}</span></td>
+          <td class="cell-main">${escapeHTML(item.nome)}</td>
+          <td class="cell-muted">${escapeHTML(item.local || '—')}</td>
           <td>${item.custo > 0 ? fmt(item.custo) : '—'}</td>
           <td>
             <div class="qty-wrap">
@@ -228,10 +231,10 @@ function renderReceitas() {
   if (list.length && tbody) {
     tbody.innerHTML = [...list].sort((a, b) => b.data.localeCompare(a.data)).map(r => `
       <tr>
-        <td class="cell-muted">${r.data}</td>
+        <td class="cell-muted">${escapeHTML(r.data)}</td>
         <td>
-          <div class="cell-main">${r.descricao}</div>
-          ${r.subDesc ? `<div class="cell-sub">${r.subDesc}</div>` : ''}
+          <div class="cell-main">${escapeHTML(r.descricao)}</div>
+          ${r.subDesc ? `<div class="cell-sub">${escapeHTML(r.subDesc)}</div>` : ''}
         </td>
         <td>${r.origem === 'auto'
           ? '<span class="chip chip-blue">Automático</span>'
@@ -274,8 +277,8 @@ function renderDespesas() {
       ? DB.despesasRecorrentes.map(t => `
           <div class="recurring-row">
             <div class="recurring-info">
-              <div class="recurring-name">${t.nome}</div>
-              <div class="recurring-meta">${t.categoria} · Dia 1 de cada mês</div>
+              <div class="recurring-name">${escapeHTML(t.nome)}</div>
+              <div class="recurring-meta">${escapeHTML(t.categoria || 'Outros')} · Dia 1 de cada mês</div>
             </div>
             <div class="recurring-val">${fmt(t.valor)}<span style="font-size:11px;color:var(--muted)">/mês</span></div>
             <button class="btn btn-danger-ghost btn-xs" onclick="removerRecorrente('${t.id}')">✕</button>
@@ -291,12 +294,12 @@ function renderDespesas() {
   if (list.length && tbody) {
     tbody.innerHTML = [...list].sort((a, b) => b.data.localeCompare(a.data)).map(d => `
       <tr>
-        <td class="cell-muted">${d.data}</td>
+        <td class="cell-muted">${escapeHTML(d.data)}</td>
         <td>
-          <div class="cell-main">${d.descricao}</div>
-          ${d.obs ? `<div class="cell-sub">${d.obs}</div>` : ''}
+          <div class="cell-main">${escapeHTML(d.descricao)}</div>
+          ${d.obs ? `<div class="cell-sub">${escapeHTML(d.obs)}</div>` : ''}
         </td>
-        <td><span class="chip chip-muted">${d.categoria || 'Outros'}</span></td>
+        <td><span class="chip chip-muted">${escapeHTML(d.categoria || 'Outros')}</span></td>
         <td class="cell-money-neg">${fmt(d.valor)}</td>
         <td>${badge(d.status === 'pago' ? 'pago' : 'pendpag')}</td>
         <td>${d.auto ? '<span class="chip chip-blue">Auto</span>'
@@ -398,21 +401,6 @@ function renderDRE() {
 }
 
 /* ── Equipe ──────────────────────────────────────────────── */
-const TEAM = [
-  { n:'Fábio',   r:'Gestor Geral',         ini:'F',  c:'var(--accent)',
-    tasks:['Supervisão geral da operação','Gestão de e-commerce','Financeiro e administrativo','Suporte à equipe'] },
-  { n:'Roseli',  r:'Gestora Geral',         ini:'R',  c:'var(--accent)',
-    tasks:['Supervisão presencial','Gestão de produção','Expedição','Alinhamento de processos'] },
-  { n:'Yasmin',  r:'Fiscal & Embalagem',    ini:'Y',  c:'var(--blue-500)',
-    tasks:['Emitir NFs e etiquetas do dia','Imprimir relação de Envios Full','Conferir pedidos embalados vs sistema','Registrar horários de corte e despacho'] },
-  { n:'Daniel',  r:'Separação & Despacho',  ini:'D',  c:'var(--green-500)',
-    tasks:['Separar produtos dos pedidos do dia','Informar quantidade embalados à Yasmin','Embalar pedidos','Levar pedidos ao despacho (com Luiz)'] },
-  { n:'Luiz',    r:'Apoio & Despacho',      ini:'L',  c:'var(--amber-500)',
-    tasks:['Apoiar Daniel na separação','Iniciar embalagem durante impressão','Levar pedidos ao despacho (com Daniel)'] },
-  { n:'Lucas',   r:'Operador de Máquinas',  ini:'Lc', c:'#7040A0',
-    tasks:['Operar 2 máquinas de corte MDF','Destacar produtos para expedição','Apoio em demandas operacionais'] },
-];
-
 function renderEquipe() {
   const grid = qry('#equipe-grid');
   if (!grid) return;
@@ -434,63 +422,39 @@ function renderEquipe() {
 /* ── Configurações ───────────────────────────────────────── */
 function renderConfig() {
   const c = DB.config;
-  setVal('cfg-backend-url',  c.backendUrl    || '');
   setVal('cfg-taxa-ml',      c.taxaML        ?? 12);
   setVal('cfg-custo-emb',    c.custoEmbalagem ?? 3.50);
   setVal('cfg-nome',         c.nomeEmpresa   || '');
   setVal('cfg-h-corte',      c.hCorte        || '08:00');
   setVal('cfg-h-despacho',   c.hDespacho     || '14:00');
 
-  const lbl = qry('#ml-status-label');
-  if (!lbl) return;
-  if (c.mlConnected) {
-    lbl.textContent = '✅ Conectado ao Mercado Livre';
-    lbl.style.color = 'var(--green-500)';
-  } else if (c.backendUrl) {
-    lbl.textContent = '🟡 Backend configurado — clique em Conectar';
-    lbl.style.color = 'var(--amber-500)';
-  } else {
-    lbl.textContent = 'Não conectado';
-    lbl.style.color = 'var(--muted)';
-  }
+  const badge = qry('#cfg-ml-badge');
+  const txt   = qry('#cfg-status-text');
+  if (badge) badge.className = 'ml-status-badge' + (c.mlConnected ? ' on' : '');
+  if (badge) badge.textContent = c.mlConnected ? 'Conectado' : 'Não conectado';
+  if (txt)   txt.textContent   = c.mlConnected ? '✅ Conectado ao Mercado Livre' : 'Não conectado';
 }
 
 function renderMLBanner() {
   const c   = DB.config;
-  const dot = qry('#ml-dot');
+  const dot = qry('#ml-banner-dot');
   const txt = qry('#ml-banner-text');
-  const btn = qry('#btn-import-ml');
+  const btn = qry('#btn-ml-import');
 
   if (!dot) return;
 
   if (c.mlConnected) {
-    dot.className = 'ml-dot connected';
+    dot.className = 'ml-banner-dot on';
     txt.innerHTML = '<b>Mercado Livre conectado.</b> Use o botão para importar novos pedidos.';
     show(btn);
-  } else if (c.backendUrl) {
-    dot.className = 'ml-dot warning';
-    txt.innerHTML = 'Backend configurado. <b>Autorize sua conta ML</b> em Configurações.';
-    hide(btn);
   } else {
-    dot.className = 'ml-dot';
+    dot.className = 'ml-banner-dot';
     txt.innerHTML = 'Configure a integração com o <b>Mercado Livre</b> em Configurações.';
     hide(btn);
   }
 }
 
 /* ── Helpers de UI ───────────────────────────────────────── */
-const STATUS_BADGES = {
-  pendente:   ['badge-amber',  'Pendente'],
-  separando:  ['badge-blue',   'Separando'],
-  embalado:   ['badge-green',  'Embalado'],
-  despachado: ['badge-purple', 'Despachado'],
-  pago:       ['badge-green',  'Pago'],
-  pendpag:    ['badge-amber',  'Pendente'],
-  ok:         ['badge-green',  'OK'],
-  baixo:      ['badge-amber',  'Baixo'],
-  critico:    ['badge-red',    'Crítico'],
-};
-
 function badge(status) {
   const [cls, lbl] = STATUS_BADGES[status] || ['badge-muted', status];
   return `<span class="badge ${cls}">${lbl}</span>`;

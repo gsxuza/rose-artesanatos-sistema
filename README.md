@@ -3,8 +3,8 @@
 > Sistema de gestão operacional e financeira desenvolvido para um e-commerce de artesanato em MDF no Mercado Livre. Projeto real, entregue a um cliente.
 
 ![Stack](https://img.shields.io/badge/Frontend-HTML%20%2F%20CSS%20%2F%20JS-B84C1E?style=flat-square)
-![Backend](https://img.shields.io/badge/Backend-Node.js%20%2F%20Express-2A6449?style=flat-square)
-![Deploy](https://img.shields.io/badge/Deploy-Railway-7040A0?style=flat-square)
+![Backend](https://img.shields.io/badge/Backend-Vercel%20Functions-2A6449?style=flat-square)
+![DB](https://img.shields.io/badge/DB-Supabase-3ECF8E?style=flat-square)
 ![API](https://img.shields.io/badge/API-Mercado%20Livre-FFE600?style=flat-square&labelColor=2D3134)
 
 ---
@@ -28,6 +28,8 @@ Cliente real com operação de venda de artesanatos em MDF no Mercado Livre. Ant
 rose-artesanatos-sistema/
 │
 ├── index.html              # Estrutura HTML principal
+├── package.json            # Dependências das funções serverless (api/)
+├── .env.example            # Modelo de variáveis de ambiente (Vercel)
 ├── .gitignore
 ├── README.md
 │
@@ -35,6 +37,7 @@ rose-artesanatos-sistema/
 │   └── style.css           # Design system completo (tokens, layout, componentes)
 │
 ├── js/
+│   ├── constants.js        # Constantes globais (status, badges, equipe, títulos)
 │   ├── db.js               # Estado global, localStorage, helpers
 │   ├── finance.js          # Cálculos financeiros + automação de lançamentos
 │   ├── charts.js           # Gráficos SVG (fluxo de caixa, categorias)
@@ -43,11 +46,19 @@ rose-artesanatos-sistema/
 │   ├── ml.js               # Integração Mercado Livre (OAuth + importação)
 │   └── app.js              # Navegação, modais, toast, inicialização
 │
-└── backend/
-    ├── server.js           # API REST Node.js/Express
-    ├── package.json
-    ├── railway.json        # Configuração de deploy Railway
-    └── .env.example        # Modelo de variáveis de ambiente
+├── api/                    # Funções serverless (Vercel) — integração Mercado Livre
+│   ├── _lib/
+│   │   ├── supabase.js     # Client Supabase (service role, só no servidor)
+│   │   └── ml.js           # Token OAuth (get/refresh) + chamadas à API do ML
+│   ├── auth/
+│   │   ├── url.js          # GET  /api/auth/url
+│   │   ├── callback.js     # GET  /api/auth/callback
+│   │   └── status.js       # GET  /api/auth/status
+│   └── pedidos/
+│       └── importar.js     # POST /api/pedidos/importar
+│
+└── supabase/
+    └── schema.sql          # Tabelas ml_tokens e ml_imported_orders
 ```
 
 ---
@@ -89,47 +100,45 @@ rose-artesanatos-sistema/
 - Funções e responsabilidades de cada colaborador
 
 ### ⚙️ Configurações + Integração ML
-- Configuração de URL do backend (Railway)
 - Taxa ML configurável
 - Custo de embalagem configurável
-- Conexão OAuth com conta do Mercado Livre
+- Conexão OAuth com conta do Mercado Livre (via funções serverless + Supabase)
 
 ---
 
 ## 🚀 Como Rodar
 
-### Frontend (sem backend)
+### Frontend (sem integração ML)
 Abra `index.html` diretamente no navegador. O sistema funciona offline com localStorage.
 
-### Backend + Integração ML
+### Com integração Mercado Livre (local)
 
 ```bash
-# 1. Entrar na pasta do backend
-cd backend
-
-# 2. Instalar dependências
+# 1. Instalar dependências das funções serverless
 npm install
+
+# 2. Instalar a Vercel CLI (se ainda não tiver)
+npm install -g vercel
 
 # 3. Configurar variáveis (copiar .env.example para .env)
 cp .env.example .env
-# Edite .env com suas credenciais ML
+# Edite .env com suas credenciais ML e do Supabase
 
-# 4. Rodar localmente
-npm run dev
+# 4. Rodar localmente (frontend + funções em /api)
+vercel dev
 ```
 
-### Deploy no Railway
+### Deploy (Vercel + Supabase)
 
-```bash
-# Via Railway CLI
-npm install -g @railway/cli
-cd backend
-railway login
-railway init
-railway up
-```
-
-Ou conecte o repositório GitHub diretamente pelo painel do Railway.
+1. Crie um projeto no [Supabase](https://supabase.com) e rode `supabase/schema.sql`
+   no SQL Editor — isso cria as tabelas `ml_tokens` e `ml_imported_orders`.
+2. Copie a **Project URL** e a **service_role key** (Project Settings → API).
+3. Publique o repositório na [Vercel](https://vercel.com) (import do GitHub, ou
+   `vercel --prod` pela CLI).
+4. No dashboard do projeto na Vercel, configure as variáveis de ambiente:
+   `ML_APP_ID`, `ML_SECRET`, `ML_REDIRECT`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+5. Atualize `ML_REDIRECT` para `https://SEU-PROJETO.vercel.app/api/auth/callback`
+   e configure a mesma URL de callback no app do Mercado Livre Developers.
 
 ---
 
@@ -137,9 +146,9 @@ Ou conecte o repositório GitHub diretamente pelo painel do Railway.
 
 1. Acesse [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br)
 2. Crie um aplicativo com a conta do vendedor
-3. Configure a URL de callback: `https://SEU-PROJETO.up.railway.app/auth/callback`
+3. Configure a URL de callback: `https://SEU-PROJETO.vercel.app/api/auth/callback`
 4. Copie o **App ID** e **Secret Key**
-5. Configure as variáveis `ML_APP_ID` e `ML_SECRET` no Railway
+5. Configure as variáveis `ML_APP_ID` e `ML_SECRET` na Vercel
 6. No dashboard do sistema, acesse **Configurações** e clique em **Conectar com Mercado Livre**
 
 ---
@@ -150,9 +159,10 @@ Ou conecte o repositório GitHub diretamente pelo painel do Railway.
 |--------|-----------|
 | Frontend | HTML5, CSS3, JavaScript (Vanilla) |
 | Persistência local | localStorage |
-| Backend | Node.js, Express |
+| Backend | Funções serverless (Vercel, Node.js) |
+| Banco de dados | Supabase (Postgres) — só tokens ML |
 | Integração | Mercado Livre API (OAuth 2.0) |
-| Deploy backend | Railway |
+| Deploy | Vercel |
 | Fontes | Fraunces (display) + Outfit (corpo) |
 
 ---

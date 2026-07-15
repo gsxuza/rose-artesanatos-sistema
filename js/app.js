@@ -21,17 +21,8 @@ function goto(section) {
   document.querySelectorAll(`.bnav-btn[data-sec="${section}"]`).forEach(b => b.classList.add('active'));
 
   // Topbar
-  const titles = {
-    dashboard:     'Dashboard',
-    pedidos:       'Pedidos',
-    despacho:      'Despacho',
-    estoque:       'Estoque',
-    financeiro:    'Financeiro',
-    equipe:        'Equipe',
-    configuracoes: 'Configurações',
-  };
   const titleEl = document.getElementById('page-title');
-  if (titleEl) titleEl.textContent = titles[section] || section;
+  if (titleEl) titleEl.textContent = SECTION_TITLES[section] || section;
 
   // Botão de ação contextual no topbar
   const topBtn    = document.getElementById('topbar-btn');

@@ -11,7 +11,6 @@ const DEFAULT_DB = {
   despesasRecorrentes: [],
   receitas:            [],
   config: {
-    backendUrl:     '',
     mlConnected:    false,
     taxaML:         12,
     custoEmbalagem: 3.50,
@@ -29,6 +28,21 @@ const today    = () => new Date().toISOString().split('T')[0];
 const nowMK    = () => monthKey(today());
 const monthKey = (d) => d ? String(d).substring(0, 7) : '';
 const clamp    = (n, mn, mx) => Math.min(Math.max(n, mn), mx);
+
+// Previne XSS ao inserir dados do usuário em innerHTML
+const escapeHTML = (() => {
+  const div = document.createElement('div');
+  return (str) => {
+    div.textContent = String(str ?? '');
+    return div.innerHTML;
+  };
+})();
+
+// Converte string de input em número financeiro com segurança
+const parseMoney = (v) => {
+  const n = Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+};
 
 const fmt = (v) =>
   'R$\u00A0' + Number(v || 0).toLocaleString('pt-BR', {

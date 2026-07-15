@@ -447,14 +447,14 @@
             <div class="step-num" id="sn1">1</div>
             <div class="step-body">
               <div class="step-title">Crie um App no Mercado Livre Developers</div>
-              <p class="step-desc">Acesse <a href="https://developers.mercadolivre.com.br" target="_blank">developers.mercadolivre.com.br</a> com a conta da empresa. Crie um novo aplicativo e copie o <strong>App ID</strong> e o <strong>Secret Key</strong>. Na URL de callback, coloque a URL do backend (Railway).</p>
+              <p class="step-desc">Acesse <a href="https://developers.mercadolivre.com.br" target="_blank">developers.mercadolivre.com.br</a> com a conta da empresa. Crie um novo aplicativo e copie o <strong>App ID</strong> e o <strong>Secret Key</strong>. Na URL de callback, coloque <code>https://SEU-PROJETO.vercel.app/api/auth/callback</code>.</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num" id="sn2">2</div>
             <div class="step-body">
-              <div class="step-title">Suba o backend no Railway</div>
-              <p class="step-desc">Use os arquivos <code>server.js</code> e <code>package.json</code> gerados. Crie projeto em <a href="https://railway.app" target="_blank">railway.app</a> com as variáveis <code>ML_APP_ID</code>, <code>ML_SECRET</code> e <code>ML_REDIRECT</code>. Copie a URL gerada.</p>
+              <div class="step-title">Configure as variáveis de ambiente na Vercel</div>
+              <p class="step-desc">No dashboard do projeto na <a href="https://vercel.com" target="_blank">Vercel</a>, defina <code>ML_APP_ID</code>, <code>ML_SECRET</code>, <code>ML_REDIRECT</code>, <code>SUPABASE_URL</code> e <code>SUPABASE_SERVICE_ROLE_KEY</code> (a tabela do Supabase é criada rodando <code>supabase/schema.sql</code>).</p>
             </div>
           </div>
           <div class="step">
@@ -463,18 +463,14 @@
               <div class="step-title">Configure abaixo e conecte</div>
               <div class="config-form mt-3">
                 <div class="form-grid-2">
-                  <div class="form-field full">
-                    <label class="form-label">URL do Backend (Railway)</label>
-                    <input id="cfg-backend" type="url" placeholder="https://rose-backend.up.railway.app">
-                  </div>
                   <div class="form-field">
                     <label class="form-label">Taxa ML (%) — auto-despesa</label>
-                    <input id="cfg-taxa" type="number" min="0" max="50" step="0.1" placeholder="12">
+                    <input id="cfg-taxa-ml" type="number" min="0" max="50" step="0.1" placeholder="12">
                     <span class="form-hint">Deduzida automaticamente em cada venda</span>
                   </div>
                   <div class="form-field">
                     <label class="form-label">Custo de Embalagem (R$/pedido)</label>
-                    <input id="cfg-emb" type="number" min="0" step="0.01" placeholder="3.50">
+                    <input id="cfg-custo-emb" type="number" min="0" step="0.01" placeholder="3.50">
                     <span class="form-hint">Registrado ao despachar cada pedido</span>
                   </div>
                 </div>
@@ -507,11 +503,11 @@
           </div>
           <div class="form-field">
             <label class="form-label">Horário Corte MDF</label>
-            <input id="cfg-hcorte" type="time" value="08:00">
+            <input id="cfg-h-corte" type="time" value="08:00">
           </div>
           <div class="form-field full">
             <label class="form-label">Horário de Despacho</label>
-            <input id="cfg-hdesp" type="time" value="14:00">
+            <input id="cfg-h-despacho" type="time" value="14:00">
           </div>
         </div>
         <div class="mt-3">
@@ -677,6 +673,7 @@
 <div class="toast" id="toast"></div>
 
 <!-- Scripts (ordem de dependência) -->
+<script src="js/constants.js"></script>
 <script src="js/db.js"></script>
 <script src="js/finance.js"></script>
 <script src="js/charts.js"></script>
