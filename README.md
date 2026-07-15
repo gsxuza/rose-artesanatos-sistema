@@ -137,7 +137,7 @@ vercel dev
    `vercel --prod` pela CLI).
 4. No dashboard do projeto na Vercel, configure as variáveis de ambiente:
    `ML_APP_ID`, `ML_SECRET`, `ML_REDIRECT`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
-5. Atualize `ML_REDIRECT` para `https://SEU-PROJETO.vercel.app/api/auth/callback`
+5. Atualize `ML_REDIRECT` para `https://rose-artesanatos-sistema-enwk.vercel.app/api/auth/callback`
    e configure a mesma URL de callback no app do Mercado Livre Developers.
 
 ---
@@ -146,7 +146,7 @@ vercel dev
 
 1. Acesse [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br)
 2. Crie um aplicativo com a conta do vendedor
-3. Configure a URL de callback: `https://SEU-PROJETO.vercel.app/api/auth/callback`
+3. Configure a URL de callback: `https://rose-artesanatos-sistema-enwk.vercel.app/api/auth/callback`
 4. Copie o **App ID** e **Secret Key**
 5. Configure as variáveis `ML_APP_ID` e `ML_SECRET` na Vercel
 6. No dashboard do sistema, acesse **Configurações** e clique em **Conectar com Mercado Livre**

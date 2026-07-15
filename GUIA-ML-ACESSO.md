@@ -22,7 +22,7 @@ atualizada em 29/12/2025) para garantir que os campos abaixo batem com a tela re
       pegar as credenciais (pule para o Passo 4).
 - [ ] Você (desenvolvedor) precisa ter feito o primeiro deploy na Vercel **antes** desta
       etapa, porque vai precisar informar ao cliente a URL exata de callback
-      (`https://SEU-PROJETO.vercel.app/api/auth/callback`) para colar no formulário.
+      (`https://rose-artesanatos-sistema-enwk.vercel.app/api/auth/callback`) para colar no formulário.
 
 ---
 
@@ -65,7 +65,7 @@ O formulário tem alguns campos. Preencha assim:
 | **Nome curto** | `rose-artesanatos` (sem espaços/acentos — o Mercado Livre usa isso para gerar a URL do app) |
 | **Descrição** | `Sistema interno de gestão de pedidos e integração com o Mercado Livre` (máximo 150 caracteres) |
 | **Logo** | Opcional — pode deixar em branco ou subir a logo da empresa |
-| **URLs de redirecionamento** | Cole exatamente a URL que o desenvolvedor te passou, no formato: `https://SEU-PROJETO.vercel.app/api/auth/callback` |
+| **URLs de redirecionamento** | `https://rose-artesanatos-sistema-enwk.vercel.app/api/auth/callback` |
 | **Usar PKCE** | **Deixar desmarcado.** (O sistema já guarda a senha secreta com segurança no servidor — o PKCE é para outro tipo de aplicativo que não tem onde guardar essa senha, como apps de celular.) |
 | **Device Grant** | Deixar desmarcado (não se aplica aqui) |
 | **Escopos** | Marcar **Leitura** e **Escrita** (o sistema precisa ler os pedidos e também atualizar o status de envio) |
@@ -123,7 +123,7 @@ Copie e envie por WhatsApp (troque `SEU-PROJETO` pela URL real depois do deploy)
 > - **Nome:** Rose Artesanatos Sistema
 > - **Nome curto:** rose-artesanatos
 > - **Descrição:** Sistema interno de gestão de pedidos
-> - **URL de redirecionamento:** `https://SEU-PROJETO.vercel.app/api/auth/callback`
+> - **URL de redirecionamento:** `https://rose-artesanatos-sistema-enwk.vercel.app/api/auth/callback`
 > - **Usar PKCE:** deixe desmarcado
 > - **Escopos:** marque Leitura e Escrita
 > - **Tópicos:** não marque nenhum
@@ -146,7 +146,7 @@ Copie e envie por WhatsApp (troque `SEU-PROJETO` pela URL real depois do deploy)
 2. Configura as variáveis de ambiente no dashboard da Vercel:
    ML_APP_ID     = (Client ID do cliente)
    ML_SECRET     = (Client Secret do cliente)
-   ML_REDIRECT   = https://SEU-PROJETO.vercel.app/api/auth/callback
+   ML_REDIRECT   = https://rose-artesanatos-sistema-enwk.vercel.app/api/auth/callback
    SUPABASE_URL  = (URL do projeto Supabase)
    SUPABASE_SERVICE_ROLE_KEY = (service role key do Supabase)
       ↓
