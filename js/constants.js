@@ -6,15 +6,15 @@
 const STATUS_FLOW = ['pendente', 'separando', 'embalado', 'despachado'];
 
 const STATUS_BADGES = {
-  pendente:   ['badge-amber',  'Pendente'],
-  separando:  ['badge-blue',   'Separando'],
-  embalado:   ['badge-green',  'Embalado'],
-  despachado: ['badge-purple', 'Despachado'],
-  pago:       ['badge-green',  'Pago'],
-  pendpag:    ['badge-amber',  'Pendente'],
-  ok:         ['badge-green',  'OK'],
-  baixo:      ['badge-amber',  'Baixo'],
-  critico:    ['badge-red',    'Crítico'],
+  pendente:   ['b-pendente',   'Pendente'],
+  separando:  ['b-separando',  'Separando'],
+  embalado:   ['b-embalado',   'Embalado'],
+  despachado: ['b-despachado', 'Despachado'],
+  pago:       ['b-pago',       'Pago'],
+  pendpag:    ['b-pendpag',    'Pendente'],
+  ok:         ['b-ok',         'OK'],
+  baixo:      ['b-baixo',      'Baixo'],
+  critico:    ['b-critico',    'Crítico'],
 };
 
 const SECTION_TITLES = {
@@ -32,11 +32,11 @@ const TEAM = [
     tasks: ['Supervisão geral da operação', 'Gestão de e-commerce', 'Financeiro e administrativo', 'Suporte à equipe'] },
   { n: 'Roseli', r: 'Gestora Geral',        ini: 'R',  c: 'var(--accent)',
     tasks: ['Supervisão presencial', 'Gestão de produção', 'Expedição', 'Alinhamento de processos'] },
-  { n: 'Yasmin', r: 'Fiscal & Embalagem',   ini: 'Y',  c: 'var(--blue-500)',
+  { n: 'Yasmin', r: 'Fiscal & Embalagem',   ini: 'Y',  c: 'var(--blue)',
     tasks: ['Emitir NFs e etiquetas do dia', 'Imprimir relação de Envios Full', 'Conferir pedidos embalados vs sistema', 'Registrar horários de corte e despacho'] },
-  { n: 'Daniel', r: 'Separação & Despacho', ini: 'D',  c: 'var(--green-500)',
+  { n: 'Daniel', r: 'Separação & Despacho', ini: 'D',  c: 'var(--green)',
     tasks: ['Separar produtos dos pedidos do dia', 'Informar quantidade embalados à Yasmin', 'Embalar pedidos', 'Levar pedidos ao despacho (com Luiz)'] },
-  { n: 'Luiz',   r: 'Apoio & Despacho',     ini: 'L',  c: 'var(--amber-500)',
+  { n: 'Luiz',   r: 'Apoio & Despacho',     ini: 'L',  c: 'var(--amber)',
     tasks: ['Apoiar Daniel na separação', 'Iniciar embalagem durante impressão', 'Levar pedidos ao despacho (com Daniel)'] },
   { n: 'Lucas',  r: 'Operador de Máquinas', ini: 'Lc', c: '#7040A0',
     tasks: ['Operar 2 máquinas de corte MDF', 'Destacar produtos para expedição', 'Apoio em demandas operacionais'] },

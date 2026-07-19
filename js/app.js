@@ -17,15 +17,15 @@ function goto(section) {
   document.querySelectorAll(`.nav-link[data-sec="${section}"]`).forEach(l => l.classList.add('active'));
 
   // Bottom nav (mobile)
-  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll(`.bnav-btn[data-sec="${section}"]`).forEach(b => b.classList.add('active'));
+  document.querySelectorAll('.bnav').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll(`.bnav[data-sec="${section}"]`).forEach(b => b.classList.add('active'));
 
   // Topbar
   const titleEl = document.getElementById('page-title');
   if (titleEl) titleEl.textContent = SECTION_TITLES[section] || section;
 
   // Botão de ação contextual no topbar
-  const topBtn    = document.getElementById('topbar-btn');
+  const topBtn    = document.getElementById('topbar-cta');
   const topBtnMap = {
     pedidos:    { label: '+ Novo Pedido',  fn: () => openModal('modal-pedido') },
     estoque:    { label: '+ Novo SKU',     fn: () => openModal('modal-sku') },
@@ -44,9 +44,10 @@ function goto(section) {
 }
 
 /* ── Sub-abas financeiro ─────────────────────────────────── */
-function finTab(tab) {
-  document.querySelectorAll('.fin-tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll(`.fin-tab-btn[data-tab="${tab}"]`).forEach(b => b.classList.add('active'));
+function finTab(tab, btn) {
+  document.querySelectorAll('.fin-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else document.querySelectorAll(`.fin-tab[data-fin="${tab}"]`).forEach(b => b.classList.add('active'));
   document.querySelectorAll('.fin-pane').forEach(p => p.classList.remove('active'));
   const pane = document.getElementById('fin-' + tab);
   if (pane) pane.classList.add('active');
@@ -100,28 +101,28 @@ function showToast(msg, type = '') {
 }
 
 /* ── Checklist de despacho ───────────────────────────────── */
-function toggleCheckItem(el) {
+function toggleCheck(el) {
   el.classList.toggle('done');
   updateChecklistProgress();
 }
 
 function resetChecklist() {
-  document.querySelectorAll('.check-row').forEach(r => r.classList.remove('done'));
+  document.querySelectorAll('.check-item').forEach(r => r.classList.remove('done'));
   updateChecklistProgress();
 }
 
 function updateChecklistProgress() {
-  const all  = document.querySelectorAll('.check-row').length;
-  const done = document.querySelectorAll('.check-row.done').length;
-  const bar  = document.getElementById('check-fill');
-  const lbl  = document.getElementById('check-label');
+  const all  = document.querySelectorAll('.check-item').length;
+  const done = document.querySelectorAll('.check-item.done').length;
+  const bar  = document.getElementById('chk-fill');
+  const lbl  = document.getElementById('chk-label');
   if (bar) bar.style.width = all > 0 ? (done / all * 100) + '%' : '0%';
-  if (lbl) lbl.textContent = `${done} de ${all} concluídos`;
+  if (lbl) lbl.textContent = `${done} de ${all}`;
 }
 
 /* ── Data no topbar ──────────────────────────────────────── */
 function initDate() {
-  const el = document.getElementById('date-display');
+  const el = document.getElementById('date-label');
   if (!el) return;
   const opts = { weekday: 'short', day: '2-digit', month: 'short' };
   el.textContent = new Date().toLocaleDateString('pt-BR', opts);

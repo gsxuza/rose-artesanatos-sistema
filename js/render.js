@@ -18,14 +18,22 @@ function renderAll() {
 
 /* ── Badges de alerta no sidebar ─────────────────────────── */
 function updateBadges() {
+  // .nav-pill usa display:none no CSS; a visibilidade é controlada pela classe .show
+  const setPill = (id, text, visible) => {
+    const e = document.getElementById(id);
+    if (!e) return;
+    e.textContent = text;
+    e.classList.toggle('show', visible);
+  };
+
   const pend = DB.pedidos.filter(p => p.status === 'pendente').length;
-  setEl('pill-pedidos', pend > 0 ? pend : '', pend > 0);
+  setPill('pill-pedidos', pend > 0 ? pend : '', pend > 0);
 
   const baixoEstoque = DB.estoque.filter(i => getEstoqueStatus(i) !== 'ok').length;
-  setEl('pill-estoque', baixoEstoque > 0 ? baixoEstoque : '', baixoEstoque > 0);
+  setPill('pill-estoque', baixoEstoque > 0 ? baixoEstoque : '', baixoEstoque > 0);
 
   const alerts = getAlerts().length;
-  setElVisible('pill-fin', alerts > 0);
+  setPill('pill-fin', alerts > 0 ? '!' : '', alerts > 0);
 }
 
 /* ── Dashboard ───────────────────────────────────────────── */
@@ -39,30 +47,30 @@ function renderDashboard() {
   const despPed = DB.pedidos.filter(p => p.status === 'despachado').length;
   const hoje    = DB.pedidos.filter(p => (p.criadoEm || '').startsWith(today())).length;
 
-  setText('dk-pedidos',   total);
-  setText('dk-psub',      `${hoje} novo(s) hoje · ${despPed} despachado(s)`);
-  setText('dk-receita',   fmtK(receita));
-  setText('dk-rsub',      `${DB.receitas.filter(r => monthKey(r.data)===ym).length} entradas este mês`);
-  setText('dk-despesa',   fmtK(despesa));
-  setText('dk-dsub',      `${getDespesasByCategory(ym).length} categorias`);
-  setText('dk-lucro',     fmtK(lucro));
-  setText('dk-lsub',      `margem ${margem.toFixed(1)}%`);
-  style('dk-lucro', 'color', lucro >= 0 ? 'var(--green-500)' : 'var(--red-500)');
+  setText('kpi-pedidos',      total);
+  setText('kpi-pedidos-sub',  `${hoje} novo(s) hoje · ${despPed} despachado(s)`);
+  setText('kpi-receita',      fmtK(receita));
+  setText('kpi-receita-sub',  `${DB.receitas.filter(r => monthKey(r.data)===ym).length} entradas este mês`);
+  setText('kpi-despesa',      fmtK(despesa));
+  setText('kpi-despesa-sub',  `${getDespesasByCategory(ym).length} categorias`);
+  setText('kpi-resultado',    fmtK(lucro));
+  setText('kpi-resultado-sub', `margem ${margem.toFixed(1)}%`);
+  style('kpi-resultado', 'color', lucro >= 0 ? 'var(--green)' : 'var(--red)');
 
   // Pedidos recentes
   const recent = [...DB.pedidos].reverse().slice(0, 5);
-  const tbody  = qry('#dash-table');
+  const tbody  = qry('#dash-tbody');
   const empty  = qry('#dash-empty');
   if (recent.length && tbody) {
     tbody.innerHTML = recent.map(p => `
       <tr>
-        <td><span class="sku">${escapeHTML(p.ml || '-')}</span></td>
-        <td class="cell-trunc">${escapeHTML(p.produto || p.sku || '-')}</td>
+        <td><span class="sku-chip">${escapeHTML(p.ml || '-')}</span></td>
+        <td>${escapeHTML(p.produto || p.sku || '-')}</td>
         <td>${escapeHTML(p.resp || '-')}</td>
         <td>${badge(p.status)}</td>
         <td>${p.status !== 'despachado'
-          ? `<button class="btn btn-ghost btn-xs" onclick="avancarPedido('${p.id}')">→</button>`
-          : `<span style="font-size:11px;color:var(--muted)">✓</span>`}
+          ? `<button class="btn btn-ghost btn-sm" onclick="avancarPedido('${p.id}')">→</button>`
+          : `<span style="font-size:11px;color:var(--text-muted)">✓</span>`}
         </td>
       </tr>`).join('');
     show(tbody.closest('table'));
@@ -75,61 +83,61 @@ function renderDashboard() {
   // Alertas
   const alertsEl = qry('#dash-alertas');
   if (alertsEl) alertsEl.innerHTML = buildAlerts(getAlerts(),
-    '<div class="no-data">✅ Tudo em ordem</div>');
+    '<div class="alert-item alert-ok"><span class="alert-icon">✅</span><span>Tudo em ordem</span></div>');
 
   // Mini chart
-  drawBarChart('dash-chart', getLast6Months());
+  drawBarChart('chart-dash', getLast6Months());
 
   // Horários
-  setText('h-corte-disp',  DB.config.hCorte    || '08:00');
-  setText('h-desp-disp',   DB.config.hDespacho || '14:00');
+  setText('h-corte-disp',    DB.config.hCorte    || '08:00');
+  setText('h-despacho-disp', DB.config.hDespacho || '14:00');
 }
 
 /* ── Pedidos ─────────────────────────────────────────────── */
 function renderPedidos() {
-  const filter = val('filter-pedido-status') || '';
+  const filter = val('filter-ped-status') || '';
   const list   = filter ? DB.pedidos.filter(p => p.status === filter) : DB.pedidos;
-  const tbody  = qry('#pedidos-table');
-  const empty  = qry('#pedidos-empty');
+  const tbody  = qry('#ped-tbody');
+  const empty  = qry('#ped-empty');
 
   if (list.length && tbody) {
     tbody.innerHTML = [...list].reverse().map((p, i) => `
       <tr>
-        <td class="cell-num">${i + 1}</td>
-        <td><span class="sku">${escapeHTML(p.ml || '-')}</span></td>
+        <td>${i + 1}</td>
+        <td><span class="sku-chip">${escapeHTML(p.ml || '-')}</span></td>
         <td>
-          <div class="cell-main">${escapeHTML(p.produto || p.sku || '-')}</div>
-          ${p.sku && p.produto ? `<span class="sku" style="font-size:10px">${escapeHTML(p.sku)}</span>` : ''}
+          ${escapeHTML(p.produto || p.sku || '-')}
+          ${p.sku && p.produto ? `<div><span class="sku-chip" style="font-size:10px">${escapeHTML(p.sku)}</span></div>` : ''}
         </td>
         <td>${p.qtd || 1}</td>
         <td>${escapeHTML(p.resp || '-')}</td>
-        <td class="cell-money">${fmt(p.valor)}</td>
+        <td>${fmt(p.valor)}</td>
         <td>${badge(p.status)}</td>
         <td>
-          <div class="cell-actions">
+          <div class="btn-group">
             ${p.status !== 'despachado'
-              ? `<button class="btn btn-ghost btn-xs" title="Avançar status"
+              ? `<button class="btn btn-ghost btn-sm" title="Avançar status"
                   onclick="avancarPedido('${p.id}')">→ Avançar</button>` : ''}
-            <button class="btn btn-danger-ghost btn-xs" onclick="removerPedido('${p.id}')">✕</button>
+            <button class="btn btn-danger-outline btn-sm" onclick="removerPedido('${p.id}')">✕</button>
           </div>
         </td>
       </tr>`).join('');
-    show(tbody.closest('.card'));
+    show(tbody.closest('table'));
     hide(empty);
   } else {
-    tbody && hide(tbody.closest('.card'));
+    tbody && hide(tbody.closest('table'));
     show(empty);
   }
 }
 
 /* ── Despacho ────────────────────────────────────────────── */
 function renderDespacho() {
-  const tbody = qry('#full-table');
+  const tbody = qry('#full-tbody');
   const empty = qry('#full-empty');
   if (DB.enviosFull.length && tbody) {
     tbody.innerHTML = DB.enviosFull.map(e => `
       <tr>
-        <td><b>${e.id}</b></td>
+        <td><b>${escapeHTML(e.id)}</b></td>
         <td>${e.data || '-'}</td>
         <td>${e.volumes} vol.</td>
         <td>${badge(e.status)}</td>
@@ -144,42 +152,42 @@ function renderDespacho() {
 
 /* ── Estoque ─────────────────────────────────────────────── */
 function renderEstoque() {
-  const filter = val('filter-estoque') || '';
+  const filter = val('filter-est') || '';
   const list   = filter ? DB.estoque.filter(i => getEstoqueStatus(i) === filter) : DB.estoque;
-  const tbody  = qry('#estoque-table');
-  const empty  = qry('#estoque-empty');
+  const tbody  = qry('#est-tbody');
+  const empty  = qry('#est-empty');
 
   if (list.length && tbody) {
     tbody.innerHTML = list.map(item => {
       const st  = getEstoqueStatus(item);
       const pct = item.min > 0 ? clamp(item.qtd / item.min * 100, 0, 100) : 100;
-      const barColor = st === 'ok' ? 'var(--green-500)' : st === 'baixo' ? 'var(--amber-500)' : 'var(--red-500)';
+      const barColor = st === 'ok' ? 'var(--green)' : st === 'baixo' ? 'var(--amber)' : 'var(--red)';
       return `
         <tr>
-          <td><span class="sku">${escapeHTML(item.sku)}</span></td>
-          <td class="cell-main">${escapeHTML(item.nome)}</td>
-          <td class="cell-muted">${escapeHTML(item.local || '—')}</td>
+          <td><span class="sku-chip">${escapeHTML(item.sku)}</span></td>
+          <td>${escapeHTML(item.nome)}</td>
+          <td>${escapeHTML(item.local || '—')}</td>
           <td>${item.custo > 0 ? fmt(item.custo) : '—'}</td>
           <td>
-            <div class="qty-wrap">
-              <b>${item.qtd}</b>
-              <div class="mini-bar"><div style="width:${pct.toFixed(0)}%;background:${barColor}"></div></div>
+            <b>${item.qtd}</b>
+            <div class="progress-track" style="height:5px;max-width:64px;margin-top:4px">
+              <div class="progress-fill" style="width:${pct.toFixed(0)}%;background:${barColor}"></div>
             </div>
           </td>
-          <td class="cell-muted">${item.min}</td>
+          <td>${item.min}</td>
           <td>${badge(st)}</td>
           <td>
-            <div class="cell-actions">
-              <button class="btn btn-ghost btn-xs" onclick="ajustarEstoque('${item.sku}')">Ajustar</button>
-              <button class="btn btn-danger-ghost btn-xs" onclick="removerSKU('${item.sku}')">✕</button>
+            <div class="btn-group">
+              <button class="btn btn-ghost btn-sm" onclick="ajustarEstoque('${item.sku}')">Ajustar</button>
+              <button class="btn btn-danger-outline btn-sm" onclick="removerSKU('${item.sku}')">✕</button>
             </div>
           </td>
         </tr>`;
     }).join('');
-    show(tbody.closest('.card'));
+    show(tbody.closest('table'));
     hide(empty);
   } else {
-    tbody && hide(tbody.closest('.card'));
+    tbody && hide(tbody.closest('table'));
     show(empty);
   }
 }
@@ -207,15 +215,15 @@ function renderFinGeral() {
   setText('fn-dsub',    `${DB.despesas.filter(d => monthKey(d.data)===ym).length} lançamentos`);
   setText('fn-lucro',   fmtK(lucro));
   setText('fn-lsub',    `margem ${margem.toFixed(1)}%`);
-  style('fn-lucro', 'color', lucro >= 0 ? 'var(--green-500)' : 'var(--red-500)');
+  style('fn-lucro', 'color', lucro >= 0 ? 'var(--green)' : 'var(--red)');
   setText('fn-ticket',  fmtK(ticket));
 
-  drawBarChart('fin-chart', getLast6Months());
+  drawBarChart('chart-fin', getLast6Months());
   drawCategoryChart('cat-chart', ym);
 
   const el = qry('#fin-alertas');
   if (el) el.innerHTML = buildAlerts(getAlerts(),
-    '<div class="no-data">Sem alertas financeiros no momento</div>');
+    '<div class="alert-item alert-ok"><span class="alert-icon">✅</span><span>Sem alertas financeiros no momento</span></div>');
 }
 
 function renderReceitas() {
@@ -226,28 +234,28 @@ function renderReceitas() {
 
   setText('rec-total', fmt(total));
 
-  const tbody = qry('#rec-table');
+  const tbody = qry('#rec-tbody');
   const empty = qry('#rec-empty');
   if (list.length && tbody) {
     tbody.innerHTML = [...list].sort((a, b) => b.data.localeCompare(a.data)).map(r => `
       <tr>
-        <td class="cell-muted">${escapeHTML(r.data)}</td>
+        <td>${escapeHTML(r.data)}</td>
         <td>
-          <div class="cell-main">${escapeHTML(r.descricao)}</div>
-          ${r.subDesc ? `<div class="cell-sub">${escapeHTML(r.subDesc)}</div>` : ''}
+          ${escapeHTML(r.descricao)}
+          ${r.subDesc ? `<div style="font-size:11px;color:var(--text-muted)">${escapeHTML(r.subDesc)}</div>` : ''}
         </td>
         <td>${r.origem === 'auto'
-          ? '<span class="chip chip-blue">Automático</span>'
-          : '<span class="chip chip-muted">Manual</span>'}</td>
-        <td class="cell-money-pos">${fmt(r.valor)}</td>
+          ? '<span class="badge b-auto">Automático</span>'
+          : '<span class="sku-chip">Manual</span>'}</td>
+        <td style="color:var(--green);font-weight:500">${fmt(r.valor)}</td>
         <td>${r.origem !== 'auto'
-          ? `<button class="btn btn-danger-ghost btn-xs" onclick="removerReceita('${r.id}')">✕</button>`
-          : '<span class="cell-muted" style="font-size:11px">auto</span>'}</td>
+          ? `<button class="btn btn-danger-outline btn-sm" onclick="removerReceita('${r.id}')">✕</button>`
+          : '<span style="font-size:11px;color:var(--text-muted)">auto</span>'}</td>
       </tr>`).join('');
-    show(tbody.closest('.card'));
+    show(tbody.closest('table'));
     hide(empty);
   } else {
-    tbody && hide(tbody.closest('.card'));
+    tbody && hide(tbody.closest('table'));
     show(empty);
   }
 }
@@ -275,53 +283,53 @@ function renderDespesas() {
   if (recEl) {
     recEl.innerHTML = DB.despesasRecorrentes.length
       ? DB.despesasRecorrentes.map(t => `
-          <div class="recurring-row">
-            <div class="recurring-info">
-              <div class="recurring-name">${escapeHTML(t.nome)}</div>
-              <div class="recurring-meta">${escapeHTML(t.categoria || 'Outros')} · Dia 1 de cada mês</div>
+          <div class="recurring-card">
+            <div class="rc-info">
+              <div class="rc-name">${escapeHTML(t.nome)}</div>
+              <div class="rc-meta">${escapeHTML(t.categoria || 'Outros')} · Dia 1 de cada mês</div>
             </div>
-            <div class="recurring-val">${fmt(t.valor)}<span style="font-size:11px;color:var(--muted)">/mês</span></div>
-            <button class="btn btn-danger-ghost btn-xs" onclick="removerRecorrente('${t.id}')">✕</button>
+            <div class="rc-val">${fmt(t.valor)}<span style="font-size:11px;color:var(--text-muted)">/mês</span></div>
+            <button class="btn btn-danger-outline btn-sm" onclick="removerRecorrente('${t.id}')">✕</button>
           </div>`).join('')
-      : `<div class="dashed-empty">
+      : `<div class="empty-state" style="padding:16px">
            Nenhuma despesa recorrente.
-           <button class="btn btn-ghost btn-xs" style="margin-left:8px" onclick="openModal('modal-recorrente')">+ Adicionar</button>
+           <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="openModal('modal-recorrente')">+ Adicionar</button>
          </div>`;
   }
 
-  const tbody = qry('#desp-table');
+  const tbody = qry('#desp-tbody');
   const empty = qry('#desp-empty');
   if (list.length && tbody) {
     tbody.innerHTML = [...list].sort((a, b) => b.data.localeCompare(a.data)).map(d => `
       <tr>
-        <td class="cell-muted">${escapeHTML(d.data)}</td>
+        <td>${escapeHTML(d.data)}</td>
         <td>
-          <div class="cell-main">${escapeHTML(d.descricao)}</div>
-          ${d.obs ? `<div class="cell-sub">${escapeHTML(d.obs)}</div>` : ''}
+          ${escapeHTML(d.descricao)}
+          ${d.obs ? `<div style="font-size:11px;color:var(--text-muted)">${escapeHTML(d.obs)}</div>` : ''}
         </td>
-        <td><span class="chip chip-muted">${escapeHTML(d.categoria || 'Outros')}</span></td>
-        <td class="cell-money-neg">${fmt(d.valor)}</td>
+        <td><span class="sku-chip">${escapeHTML(d.categoria || 'Outros')}</span></td>
+        <td style="color:var(--red);font-weight:500">${fmt(d.valor)}</td>
         <td>${badge(d.status === 'pago' ? 'pago' : 'pendpag')}</td>
-        <td>${d.auto ? '<span class="chip chip-blue">Auto</span>'
-          : d.templateId ? '<span class="chip chip-purple">Recorrente</span>'
-          : '<span class="cell-muted" style="font-size:11px">Manual</span>'}</td>
+        <td>${d.auto ? '<span class="badge b-auto">Auto</span>'
+          : d.templateId ? '<span class="badge b-recorr">Recorrente</span>'
+          : '<span style="font-size:11px;color:var(--text-muted)">Manual</span>'}</td>
         <td>${!d.auto
-          ? `<button class="btn btn-danger-ghost btn-xs" onclick="removerDespesa('${d.id}')">✕</button>`
+          ? `<button class="btn btn-danger-outline btn-sm" onclick="removerDespesa('${d.id}')">✕</button>`
           : '—'}</td>
       </tr>`).join('');
-    show(tbody.closest('.card'));
+    show(tbody.closest('table'));
     hide(empty);
   } else {
-    tbody && hide(tbody.closest('.card'));
+    tbody && hide(tbody.closest('table'));
     show(empty);
   }
 }
 
 function renderFluxo() {
   const months = getLast6Months();
-  drawBarChart('fluxo-chart', months);
+  drawBarChart('chart-fluxo', months);
 
-  const tbody = qry('#fluxo-table');
+  const tbody = qry('#fluxo-tbody');
   const empty = qry('#fluxo-empty');
   const hasData = months.some(m => m.receita > 0 || m.despesa > 0);
 
@@ -331,16 +339,16 @@ function renderFluxo() {
       const margem = m.receita > 0 ? (saldo / m.receita * 100).toFixed(1) + '%' : '—';
       return `<tr>
         <td><b>${m.label}</b></td>
-        <td class="cell-money-pos">${fmt(m.receita)}</td>
-        <td class="cell-money-neg">${fmt(m.despesa)}</td>
-        <td style="font-weight:600;color:${saldo >= 0 ? 'var(--green-500)' : 'var(--red-500)'}">${fmt(saldo)}</td>
-        <td class="cell-muted">${margem}</td>
+        <td style="color:var(--green)">${fmt(m.receita)}</td>
+        <td style="color:var(--red)">${fmt(m.despesa)}</td>
+        <td style="font-weight:600;color:${saldo >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt(saldo)}</td>
+        <td>${margem}</td>
       </tr>`;
     }).join('');
-    show(tbody.closest('.card'));
+    show(tbody.closest('table'));
     hide(empty);
   } else {
-    tbody && hide(tbody.closest('.card'));
+    tbody && hide(tbody.closest('table'));
     show(empty);
   }
 }
@@ -365,30 +373,30 @@ function renderDRE() {
   const catRows = cats.length
     ? cats.map(([cat, val]) => `
         <div class="dre-row dre-sub">
-          <span>${cat}</span>
-          <span class="dre-val neg">(${fmt(val)})</span>
+          <span>${escapeHTML(cat)}</span>
+          <span class="dre-val" style="color:var(--red)">(${fmt(val)})</span>
         </div>`).join('')
-    : '<div class="dre-row dre-sub"><span style="color:var(--muted)">Nenhuma despesa</span><span>—</span></div>';
+    : '<div class="dre-row dre-sub"><span style="color:var(--text-muted)">Nenhuma despesa</span><span>—</span></div>';
 
-  const dreEl = qry('#dre-body');
+  const dreEl = qry('#dre-content');
   if (!dreEl) return;
 
   dreEl.innerHTML = `
-    <div class="dre-row dre-section">RECEITAS</div>
+    <div class="dre-row dre-header">RECEITAS</div>
     <div class="dre-row dre-sub">
       <span>Receita de Vendas</span>
-      <span class="dre-val pos">${fmt(recs)}</span>
+      <span class="dre-val" style="color:var(--green)">${fmt(recs)}</span>
     </div>
     <div class="dre-row dre-total">
       <span>Total Receitas</span>
-      <span class="dre-val pos">${fmt(recs)}</span>
+      <span class="dre-val" style="color:var(--green)">${fmt(recs)}</span>
     </div>
 
-    <div class="dre-row dre-section">DESPESAS OPERACIONAIS</div>
+    <div class="dre-row dre-header">DESPESAS OPERACIONAIS</div>
     ${catRows}
     <div class="dre-row dre-total">
       <span>Total Despesas</span>
-      <span class="dre-val neg">(${fmt(totalDesp)})</span>
+      <span class="dre-val" style="color:var(--red)">(${fmt(totalDesp)})</span>
     </div>
 
     <div class="dre-row ${resultado >= 0 ? 'dre-profit' : 'dre-loss'}">
@@ -402,7 +410,7 @@ function renderDRE() {
 
 /* ── Equipe ──────────────────────────────────────────────── */
 function renderEquipe() {
-  const grid = qry('#equipe-grid');
+  const grid = qry('#team-grid');
   if (!grid) return;
   grid.innerHTML = TEAM.map(t => `
     <div class="team-card">
@@ -413,8 +421,8 @@ function renderEquipe() {
           <div class="team-role">${t.r}</div>
         </div>
       </div>
-      <ul class="team-tasks">
-        ${t.tasks.map(task => `<li><span class="task-dot"></span>${task}</li>`).join('')}
+      <ul class="task-list">
+        ${t.tasks.map(task => `<li class="task-item"><span class="task-bullet">●</span>${task}</li>`).join('')}
       </ul>
     </div>`).join('');
 }
@@ -441,6 +449,12 @@ function renderMLBanner() {
   const txt = qry('#ml-banner-text');
   const btn = qry('#btn-ml-import');
 
+  // Rodapé da sidebar
+  const sfDot = qry('#sf-dot');
+  const sfTxt = qry('#sf-ml-text');
+  if (sfDot) sfDot.className = 'dot' + (c.mlConnected ? ' connected' : '');
+  if (sfTxt) sfTxt.textContent = c.mlConnected ? 'ML: Conectado' : 'ML: Não conectado';
+
   if (!dot) return;
 
   if (c.mlConnected) {
@@ -462,8 +476,9 @@ function badge(status) {
 
 function buildAlerts(alerts, emptyHtml) {
   if (!alerts.length) return emptyHtml;
+  const cssClass = { danger: 'alert-error', warning: 'alert-warn', ok: 'alert-ok' };
   return alerts.map(a =>
-    `<div class="alert alert-${a.type}">
+    `<div class="alert-item ${cssClass[a.type] || 'alert-warn'}">
       <span class="alert-icon">${a.icon}</span>
       <span>${a.msg}</span>
     </div>`).join('');
