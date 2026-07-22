@@ -68,6 +68,17 @@ const monthLabel = (ym) => {
   return (ms[Number(m) - 1] || '?') + '/' + y.slice(2);
 };
 
+// "2026-07-22" → "Terça, 22/07/2026"
+const formatDateFull = (iso) => {
+  if (!iso) return 'Sem data';
+  const [y, m, d] = String(iso).split('-').map(Number);
+  if (!y || !m || !d) return String(iso);
+  const dias = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const dt = new Date(y, m - 1, d);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${dias[dt.getDay()] || ''}, ${pad(d)}/${pad(m)}/${y}`;
+};
+
 /* ── Persistência (Supabase = fonte compartilhada · localStorage = cache) ──
    O estado do sistema vive numa única linha no Supabase (via /api/state), então
    todos os usuários enxergam os mesmos dados. O localStorage é só um cache local

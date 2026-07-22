@@ -525,6 +525,16 @@ tbody td {
 .b-auto       { background: var(--blue-bg);  color: var(--blue); }
 .b-recorr     { background: #F0E8F8; color: #6030A0; }
 
+/* ── GROUP HEADER (pedidos por data) ── */
+.group-row td {
+  background: var(--surface-2);
+  border-top: 1px solid var(--border-2);
+  border-bottom: 1px solid var(--border);
+  padding: 7px 12px;
+}
+.group-date { font-family: 'Fraunces', serif; font-size: 13px; font-weight: 500; color: var(--text); }
+.group-meta { font-size: 11.5px; color: var(--text-muted); margin-left: 10px; }
+
 /* ── SKU CHIP ── */
 .sku-chip {
   display: inline-block;

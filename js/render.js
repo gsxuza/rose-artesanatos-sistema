@@ -94,14 +94,33 @@ function renderDashboard() {
 }
 
 /* ── Pedidos ─────────────────────────────────────────────── */
+// Agrupa uma lista de pedidos por data (criadoEm), com as datas mais recentes
+// primeiro. Retorna [[dataISO, [pedidos...]], ...]. Reutilizado na tela e na
+// impressão.
+function groupPedidosByDate(list) {
+  const groups = {};
+  list.forEach(p => {
+    const k = p.criadoEm || 'sem-data';
+    (groups[k] = groups[k] || []).push(p);
+  });
+  return Object.keys(groups)
+    .sort((a, b) => (a === 'sem-data' ? 1 : b === 'sem-data' ? -1 : b.localeCompare(a)))
+    .map(k => [k, groups[k]]);
+}
+
 function renderPedidos() {
   const filter = val('filter-ped-status') || '';
   const list   = filter ? DB.pedidos.filter(p => p.status === filter) : DB.pedidos;
   const tbody  = qry('#ped-tbody');
   const empty  = qry('#ped-empty');
 
-  if (list.length && tbody) {
-    tbody.innerHTML = [...list].reverse().map((p, i) => `
+  if (!list.length || !tbody) {
+    tbody && hide(tbody.closest('table'));
+    show(empty);
+    return;
+  }
+
+  const rowHTML = (p, i) => `
       <tr>
         <td>${i + 1}</td>
         <td><span class="sku-chip">${escapeHTML(p.ml || '-')}</span></td>
@@ -121,13 +140,22 @@ function renderPedidos() {
             <button class="btn btn-danger-outline btn-sm" onclick="removerPedido('${p.id}')">✕</button>
           </div>
         </td>
-      </tr>`).join('');
-    show(tbody.closest('table'));
-    hide(empty);
-  } else {
-    tbody && hide(tbody.closest('table'));
-    show(empty);
-  }
+      </tr>`;
+
+  tbody.innerHTML = groupPedidosByDate(list).map(([data, items]) => {
+    const soma = items.reduce((s, p) => s + Number(p.valor || 0), 0);
+    const header = `
+      <tr class="group-row">
+        <td colspan="8">
+          <span class="group-date">${formatDateFull(data)}</span>
+          <span class="group-meta">${items.length} pedido(s) · ${fmt(soma)}</span>
+        </td>
+      </tr>`;
+    return header + items.map((p, i) => rowHTML(p, i)).join('');
+  }).join('');
+
+  show(tbody.closest('table'));
+  hide(empty);
 }
 
 /* ── Despacho ────────────────────────────────────────────── */

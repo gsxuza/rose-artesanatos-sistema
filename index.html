@@ -195,7 +195,10 @@
           <option value="embalado">Embalado</option>
           <option value="despachado">Despachado</option>
         </select>
-        <button class="btn btn-accent btn-sm" onclick="openModal('modal-pedido')">+ Novo Pedido</button>
+        <div class="btn-group">
+          <button class="btn btn-outline btn-sm" onclick="imprimirPedidos()">🖨 Imprimir</button>
+          <button class="btn btn-accent btn-sm" onclick="openModal('modal-pedido')">+ Novo Pedido</button>
+        </div>
       </div>
       <div class="card">
         <div class="table-wrap">

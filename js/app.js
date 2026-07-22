@@ -100,6 +100,101 @@ function showToast(msg, type = '') {
   t._tid = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
+/* ── Impressão da lista de pedidos ───────────────────────── */
+function imprimirPedidos() {
+  const filter = getInputValue('filter-ped-status') || '';
+  const list = filter ? DB.pedidos.filter(p => p.status === filter) : DB.pedidos.slice();
+
+  if (!list.length) {
+    showToast('Nenhum pedido para imprimir com este filtro.', 'danger');
+    return;
+  }
+
+  const empresa     = DB.config.nomeEmpresa || 'Rose Artesanatos';
+  const statusLabel = filter ? (STATUS_BADGES[filter]?.[1] || filter) : 'Todos os status';
+  const agora       = new Date().toLocaleString('pt-BR');
+  const totalGeral  = list.reduce((s, p) => s + Number(p.valor || 0), 0);
+
+  const corpo = groupPedidosByDate(list).map(([data, items]) => {
+    const soma = items.reduce((s, p) => s + Number(p.valor || 0), 0);
+    const qtdTotal = items.reduce((s, p) => s + Number(p.qtd || 1), 0);
+    const linhas = items.map((p, i) => `
+      <tr>
+        <td class="chk">☐</td>
+        <td class="c">${i + 1}</td>
+        <td>${escapeHTML(p.ml || '-')}</td>
+        <td>${escapeHTML(p.sku || '-')}</td>
+        <td>${escapeHTML(p.produto || '-')}</td>
+        <td class="c">${p.qtd || 1}</td>
+        <td>${escapeHTML(p.resp || '-')}</td>
+        <td>${escapeHTML((STATUS_BADGES[p.status] || ['', p.status])[1])}</td>
+        <td class="r">${fmt(p.valor)}</td>
+      </tr>`).join('');
+    return `
+      <tr class="grp">
+        <td colspan="9">${formatDateFull(data)} — ${items.length} pedido(s) · ${qtdTotal} item(ns) · ${fmt(soma)}</td>
+      </tr>${linhas}`;
+  }).join('');
+
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Pedidos — ${escapeHTML(empresa)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 24px; font-size: 12px; }
+  header { border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 14px; }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  .sub { font-size: 13px; font-weight: bold; }
+  .meta { font-size: 11px; color: #555; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: #eee; text-align: left; padding: 6px 8px; border: 1px solid #999; font-size: 11px; }
+  tbody td { padding: 5px 8px; border: 1px solid #ccc; }
+  tr.grp td { background: #222; color: #fff; font-weight: bold; padding: 6px 8px; }
+  td.chk { text-align: center; font-size: 15px; width: 24px; }
+  td.c { text-align: center; }
+  td.r { text-align: right; white-space: nowrap; }
+  tfoot td { padding: 8px; font-weight: bold; border-top: 2px solid #111; font-size: 13px; }
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  .toolbar { margin-bottom: 14px; }
+  .toolbar button { font-size: 13px; padding: 8px 16px; margin-right: 8px; cursor: pointer; }
+  @media print { .toolbar { display: none; } body { margin: 0; } }
+</style></head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">🖨 Imprimir</button>
+    <button onclick="window.close()">Fechar</button>
+  </div>
+  <header>
+    <h1>${escapeHTML(empresa)}</h1>
+    <div class="sub">Lista de Pedidos — ${escapeHTML(statusLabel)}</div>
+    <div class="meta">Gerado em ${agora} · ${list.length} pedido(s) · Total ${fmt(totalGeral)}</div>
+  </header>
+  <table>
+    <thead>
+      <tr>
+        <th>✓</th><th>#</th><th>Pedido ML</th><th>SKU</th><th>Produto</th>
+        <th>Qtd</th><th>Responsável</th><th>Status</th><th>Valor</th>
+      </tr>
+    </thead>
+    <tbody>${corpo}</tbody>
+    <tfoot>
+      <tr><td colspan="8" class="r">Total geral (${list.length} pedidos)</td><td class="r">${fmt(totalGeral)}</td></tr>
+    </tfoot>
+  </table>
+  <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 250); });<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=980,height=720');
+  if (!w) {
+    showToast('Popup bloqueado. Permita popups para imprimir.', 'danger');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+}
+
 /* ── Checklist de despacho ───────────────────────────────── */
 function toggleCheck(el) {
   el.classList.toggle('done');
