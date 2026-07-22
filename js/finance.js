@@ -99,9 +99,16 @@ function getAlerts() {
 /* ── Automação: despesas recorrentes ─────────────────────── */
 function applyRecurring() {
   const key = nowMK();
-  const stKey = 'rose_recur_' + key;
-  if (localStorage.getItem(stKey)) return;
-  if (!DB.despesasRecorrentes?.length) { localStorage.setItem(stKey, '1'); return; }
+  // A guarda "já apliquei este mês" agora vive no estado compartilhado, para
+  // que apenas o primeiro usuário do mês aplique as recorrentes (e não cada
+  // navegador uma vez, como no modelo antigo de localStorage).
+  DB.appliedRecurring = DB.appliedRecurring || [];
+  if (DB.appliedRecurring.includes(key)) return;
+  if (!DB.despesasRecorrentes?.length) {
+    DB.appliedRecurring.push(key);
+    saveDB();
+    return;
+  }
 
   let applied = 0;
   DB.despesasRecorrentes.forEach(t => {
@@ -117,9 +124,9 @@ function applyRecurring() {
     }
   });
 
-  localStorage.setItem(stKey, '1');
+  DB.appliedRecurring.push(key);
+  saveDB();
   if (applied > 0) {
-    saveDB();
     setTimeout(() =>
       showToast(`⚡ ${applied} despesa(s) recorrente(s) aplicada(s) automaticamente!`, 'success'), 800);
   }

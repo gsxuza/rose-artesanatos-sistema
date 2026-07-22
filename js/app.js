@@ -129,10 +129,10 @@ function initDate() {
 }
 
 /* ── Init ────────────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', () => {
-  loadDB();
-  applyRecurring();
+document.addEventListener('DOMContentLoaded', async () => {
   initDate();
+  await loadDB();        // carrega o estado compartilhado da nuvem (ou cache)
+  applyRecurring();
   renderAll();
   verificarStatusML();
 });
