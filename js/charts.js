@@ -22,7 +22,11 @@ function drawBarChart(containerId, months) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
-  const W = 600, H = 220;
+  // viewBox nas dimensões reais do container (1:1 com os pixels), para o SVG
+  // preencher exatamente a caixa em qualquer largura de tela. Fallback quando o
+  // elemento está oculto (clientWidth/Height = 0) — é redesenhado ao exibir.
+  const W = Math.max(Math.round(el.clientWidth)  || 600, 300);
+  const H = Math.max(Math.round(el.clientHeight) || 180, 150);
   const pad = { t: 20, r: 16, b: 48, l: 54 };
   const cW = W - pad.l - pad.r;
   const cH = H - pad.t - pad.b;
@@ -74,8 +78,8 @@ function drawBarChart(containerId, months) {
   });
 
   el.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"
-         xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
+         xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
       ${grid}${bars}${labels}
     </svg>`;
 }
