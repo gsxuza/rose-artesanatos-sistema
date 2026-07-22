@@ -97,15 +97,17 @@ function writeCache() {
   catch (e) { console.warn('[DB] Erro ao gravar cache local:', e); }
 }
 
-function cacheHasData(c) {
-  return !!c && (
-    (c.pedidos && c.pedidos.length) ||
-    (c.estoque && c.estoque.length) ||
-    (c.despesas && c.despesas.length) ||
-    (c.receitas && c.receitas.length) ||
-    (c.enviosFull && c.enviosFull.length) ||
-    (c.despesasRecorrentes && c.despesasRecorrentes.length) ||
-    c.config
+// "Conteúdo" = dados operacionais de verdade (pedidos, estoque, financeiro).
+// Config, flags e controle de recorrência NÃO contam: um estado só com config
+// ainda é considerado "sem conteúdo", para não bloquear a semeadura inicial.
+function hasContent(o) {
+  return !!o && (
+    (o.pedidos && o.pedidos.length) ||
+    (o.estoque && o.estoque.length) ||
+    (o.despesas && o.despesas.length) ||
+    (o.receitas && o.receitas.length) ||
+    (o.enviosFull && o.enviosFull.length) ||
+    (o.despesasRecorrentes && o.despesasRecorrentes.length)
   );
 }
 
@@ -122,23 +124,31 @@ async function loadDB() {
     console.warn('[DB] Sem conexão ao carregar; usando cache local.', e);
   }
 
-  if (remote && Object.keys(remote).length) {
+  // A nuvem já tem dados operacionais: é a fonte da verdade compartilhada.
+  if (hasContent(remote)) {
     DB = mergeDefaults(remote);
     _lastUpdatedAt = remoteUpdatedAt;
     writeCache();
     return;
   }
 
-  // Nuvem vazia: primeira carga após a migração. Se este aparelho tiver dados
-  // locais (do modelo antigo), sobe-os para a nuvem como estado inicial.
+  // A nuvem ainda não tem conteúdo. Se ESTE aparelho tiver dados locais (do
+  // modelo antigo de localStorage), sobe-os para a nuvem — recuperando o que já
+  // existia. Preserva a config que já esteja na nuvem (ex: mlConnected).
   const cache = readCache();
-  if (cacheHasData(cache)) {
+  if (hasContent(cache)) {
     DB = mergeDefaults(cache);
+    if (remote && remote.config) {
+      DB.config = { ...DB.config, ...remote.config };
+    }
     await persistNow();
     return;
   }
 
-  DB = JSON.parse(JSON.stringify(DEFAULT_DB));
+  // Nem nuvem nem aparelho têm conteúdo: carrega a config que houver na nuvem
+  // (mantém mlConnected etc.), ou os padrões.
+  DB = mergeDefaults(remote);
+  _lastUpdatedAt = remoteUpdatedAt;
 }
 
 function saveDB() {
