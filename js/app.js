@@ -101,15 +101,61 @@ function showToast(msg, type = '') {
 }
 
 /* ── Impressão da lista de pedidos ───────────────────────── */
-function imprimirPedidos() {
+// Pedidos respeitando o filtro de status da tela.
+function pedidosFiltrados() {
   const filter = getInputValue('filter-ped-status') || '';
-  const list = filter ? DB.pedidos.filter(p => p.status === filter) : DB.pedidos.slice();
+  return filter ? DB.pedidos.filter(p => p.status === filter) : DB.pedidos.slice();
+}
 
+// Abre o modal para escolher quais dias entram na impressão.
+function imprimirPedidos() {
+  const list = pedidosFiltrados();
   if (!list.length) {
     showToast('Nenhum pedido para imprimir com este filtro.', 'danger');
     return;
   }
 
+  const cont = document.getElementById('imp-datas');
+  if (cont) {
+    cont.innerHTML = groupPedidosByDate(list).map(([data, items]) => {
+      const soma = items.reduce((s, p) => s + Number(p.valor || 0), 0);
+      return `
+        <label class="imp-date-row">
+          <input type="checkbox" class="imp-data" value="${data}" checked>
+          <span class="imp-date-label">${formatDateFull(data)}</span>
+          <span class="imp-date-meta">${items.length} pedido(s) · ${fmt(soma)}</span>
+        </label>`;
+    }).join('');
+  }
+
+  const filter = getInputValue('filter-ped-status') || '';
+  setText('imp-info', filter
+    ? `Filtro ativo: ${(STATUS_BADGES[filter] || ['', filter])[1]}. Selecione os dias:`
+    : 'Selecione os dias que deseja imprimir:');
+
+  openModal('modal-imprimir');
+}
+
+function impSelecionarTodos(v) {
+  document.querySelectorAll('.imp-data').forEach(c => { c.checked = v; });
+}
+
+function impSomenteHoje() {
+  const h = today();
+  document.querySelectorAll('.imp-data').forEach(c => { c.checked = (c.value === h); });
+}
+
+function confirmarImpressao() {
+  const sel = [...document.querySelectorAll('.imp-data:checked')].map(c => c.value);
+  if (!sel.length) { showToast('Selecione pelo menos um dia para imprimir.', 'danger'); return; }
+  const list = pedidosFiltrados().filter(p => sel.includes(p.criadoEm || 'sem-data'));
+  closeModal('modal-imprimir');
+  gerarImpressao(list, sel.length);
+}
+
+// Monta a página de impressão com os pedidos dos dias escolhidos.
+function gerarImpressao(list, qtdDias) {
+  const filter      = getInputValue('filter-ped-status') || '';
   const empresa     = DB.config.nomeEmpresa || 'Rose Artesanatos';
   const statusLabel = filter ? (STATUS_BADGES[filter]?.[1] || filter) : 'Todos os status';
   const agora       = new Date().toLocaleString('pt-BR');
@@ -167,7 +213,7 @@ function imprimirPedidos() {
   <header>
     <h1>${escapeHTML(empresa)}</h1>
     <div class="sub">Lista de Pedidos — ${escapeHTML(statusLabel)}</div>
-    <div class="meta">Gerado em ${agora} · ${list.length} pedido(s) · Total ${fmt(totalGeral)}</div>
+    <div class="meta">Gerado em ${agora} · ${qtdDias || 1} dia(s) · ${list.length} pedido(s) · Total ${fmt(totalGeral)}</div>
   </header>
   <table>
     <thead>

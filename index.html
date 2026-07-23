@@ -655,6 +655,23 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="modal-imprimir">
+  <div class="modal" style="max-width:440px">
+    <h2 class="modal-title">🖨 Imprimir Lista de Pedidos</h2>
+    <p class="card-desc" id="imp-info">Selecione os dias que deseja imprimir:</p>
+    <div class="btn-group mt-2 mb-3">
+      <button class="btn btn-ghost btn-sm" onclick="impSelecionarTodos(true)">Marcar todos</button>
+      <button class="btn btn-ghost btn-sm" onclick="impSelecionarTodos(false)">Desmarcar</button>
+      <button class="btn btn-outline btn-sm" onclick="impSomenteHoje()">Somente hoje</button>
+    </div>
+    <div class="imp-datas" id="imp-datas"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-imprimir')">Cancelar</button>
+      <button class="btn btn-accent" onclick="confirmarImpressao()">🖨 Imprimir</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="modal-horarios">
   <div class="modal" style="max-width:380px">
     <h2 class="modal-title">Horários do Dia</h2>
