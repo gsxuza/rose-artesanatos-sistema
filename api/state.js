@@ -1,9 +1,13 @@
 const { getSupabase } = require('./_lib/supabase');
+const { requireAuth } = require('./_lib/auth');
 
 // Estado compartilhado do sistema (linha única em app_state).
 // GET  → devolve { data, updated_at } com todo o "banco" do app.
 // POST → grava o corpo recebido como novo estado e devolve o updated_at.
+// Protegido: exige token de sessão válido (login).
 module.exports = async (req, res) => {
+  if (!requireAuth(req, res)) return;
+
   const supabase = getSupabase();
 
   try {

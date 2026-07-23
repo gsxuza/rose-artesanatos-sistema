@@ -224,10 +224,17 @@ function initDate() {
 }
 
 /* ── Init ────────────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', async () => {
-  initDate();
-  await loadDB();        // carrega o estado compartilhado da nuvem (ou cache)
+// Carrega os dados e liga o app. Só roda com uma sessão válida.
+async function startApp() {
+  const ok = await loadDB();     // false = sessão recusada (login reexibido)
+  if (ok === false) return;
   applyRecurring();
   renderAll();
   verificarStatusML();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initDate();
+  if (isLoggedIn()) startApp();  // token presente → tenta iniciar (revalida no servidor)
+  else showLogin();              // sem token → pede a senha
 });

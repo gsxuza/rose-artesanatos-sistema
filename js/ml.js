@@ -4,7 +4,9 @@
 // ════════════════════════════════════════════════════════════
 
 async function fetchBackend(path, options = {}) {
+  options.headers = authHeaders(options.headers);
   const res = await fetch('/api' + path, options);
+  if (res.status === 401) { onAuthExpired(); throw new Error('Não autorizado'); }
   if (!res.ok) {
     const msg = await res.text().catch(() => `HTTP ${res.status}`);
     throw new Error(msg || `HTTP ${res.status}`);

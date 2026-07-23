@@ -1,7 +1,10 @@
 const { getValidToken, mlGet } = require('../_lib/ml');
 const { getSupabase } = require('../_lib/supabase');
+const { requireAuth } = require('../_lib/auth');
 
 module.exports = async (req, res) => {
+  if (!requireAuth(req, res)) return;
+
   try {
     const token = await getValidToken();
     if (!token) return res.status(401).json({ error: 'Não autenticado no ML.' });

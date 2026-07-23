@@ -11,6 +11,18 @@
 </head>
 <body>
 
+<!-- ── LOGIN ── -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <div class="login-mark">R</div>
+    <h2 class="login-title">Rose Artesanatos</h2>
+    <p class="login-sub">Digite a senha para acessar o sistema</p>
+    <input id="login-pass" type="password" placeholder="Senha" autocomplete="current-password">
+    <button class="btn btn-accent" id="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
 <!-- ── OVERLAY MOBILE ── -->
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
@@ -529,6 +541,7 @@
         <div class="btn-group">
           <button class="btn btn-outline" onclick="exportarDados()">📤 Exportar JSON</button>
           <button class="btn btn-danger-outline" onclick="limparDados()">🗑 Limpar Dados</button>
+          <button class="btn btn-ghost" onclick="logout()">🔒 Sair</button>
         </div>
       </div>
 
@@ -677,6 +690,7 @@
 
 <!-- Scripts (ordem de dependência) -->
 <script src="js/constants.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/finance.js"></script>
 <script src="js/charts.js"></script>

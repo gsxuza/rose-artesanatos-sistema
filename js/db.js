@@ -122,11 +122,15 @@ function hasContent(o) {
   );
 }
 
+// Retorna false se o servidor recusou o login (sessão inválida); nesse caso
+// o app não deve seguir — a tela de login é reexibida.
 async function loadDB() {
-  let remote = null, remoteUpdatedAt = null;
+  let remote = null, remoteUpdatedAt = null, authFailed = false;
   try {
-    const res = await fetch(STATE_URL);
-    if (res.ok) {
+    const res = await fetch(STATE_URL, { headers: authHeaders() });
+    if (res.status === 401) {
+      authFailed = true;
+    } else if (res.ok) {
       const j = await res.json();
       remote = j.data;
       remoteUpdatedAt = j.updated_at;
@@ -135,12 +139,14 @@ async function loadDB() {
     console.warn('[DB] Sem conexão ao carregar; usando cache local.', e);
   }
 
+  if (authFailed) { onAuthExpired(); return false; }
+
   // A nuvem já tem dados operacionais: é a fonte da verdade compartilhada.
   if (hasContent(remote)) {
     DB = mergeDefaults(remote);
     _lastUpdatedAt = remoteUpdatedAt;
     writeCache();
-    return;
+    return true;
   }
 
   // A nuvem ainda não tem conteúdo. Se ESTE aparelho tiver dados locais (do
@@ -153,13 +159,14 @@ async function loadDB() {
       DB.config = { ...DB.config, ...remote.config };
     }
     await persistNow();
-    return;
+    return true;
   }
 
   // Nem nuvem nem aparelho têm conteúdo: carrega a config que houver na nuvem
   // (mantém mlConnected etc.), ou os padrões.
   DB = mergeDefaults(remote);
   _lastUpdatedAt = remoteUpdatedAt;
+  return true;
 }
 
 function saveDB() {
@@ -170,12 +177,14 @@ function saveDB() {
 }
 
 async function persistNow() {
+  if (!isLoggedIn()) return;   // sem sessão, não tenta gravar
   try {
     const res = await fetch(STATE_URL, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body:    JSON.stringify(DB),
     });
+    if (res.status === 401) { onAuthExpired(); return; }
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const j = await res.json();
     _lastUpdatedAt = j.updated_at || _lastUpdatedAt;
@@ -188,13 +197,15 @@ async function persistNow() {
 
 // Busca o estado mais recente da nuvem e re-renderiza se outro usuário mudou algo.
 async function refreshDB() {
+  if (!isLoggedIn()) return;                                    // sem sessão
   if (document.querySelector('.modal-backdrop.open')) return;   // não interrompe edição em modal
   if (Date.now() - _lastMutation < 4000) return;                // acabou de editar localmente
   const ae = document.activeElement;
   if (ae && ['INPUT', 'SELECT', 'TEXTAREA'].includes(ae.tagName)) return;  // digitando
 
   try {
-    const res = await fetch(STATE_URL);
+    const res = await fetch(STATE_URL, { headers: authHeaders() });
+    if (res.status === 401) { onAuthExpired(); return; }
     if (!res.ok) return;
     const j = await res.json();
     if (!j.data || !j.updated_at) return;

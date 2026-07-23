@@ -525,6 +525,46 @@ tbody td {
 .b-auto       { background: var(--blue-bg);  color: var(--blue); }
 .b-recorr     { background: #F0E8F8; color: #6030A0; }
 
+/* ── LOGIN ── */
+.login-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.login-overlay.open { display: flex; }
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 34px 28px 30px;
+  width: 360px;
+  max-width: 100%;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+.login-mark {
+  width: 52px; height: 52px;
+  margin: 0 auto 14px;
+  background: var(--accent);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-style: italic;
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(196,80,28,0.35);
+}
+.login-title { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+.login-card input { text-align: center; margin-bottom: 10px; }
+.login-card #login-btn { width: 100%; justify-content: center; }
+.login-error { color: var(--red); font-size: 12.5px; margin-top: 12px; display: none; }
+
 /* ── GROUP HEADER (pedidos por data) ── */
 .group-row td {
   background: var(--surface-2);
