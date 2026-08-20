@@ -30,11 +30,13 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Corpo inválido.' });
       }
 
-      const now = new Date().toISOString();
-      const { error } = await supabase
-        .from('app_state').upsert({ id: 1, data: body, updated_at: now });
+      const { data: row, error } = await supabase
+        .from('app_state')
+        .upsert({ id: 1, data: body, updated_at: new Date().toISOString() })
+        .select('updated_at')
+        .single();
       if (error) throw error;
-      return res.status(200).json({ ok: true, updated_at: now });
+      return res.status(200).json({ ok: true, updated_at: row.updated_at });
     }
 
     return res.status(405).json({ error: 'Método não permitido.' });

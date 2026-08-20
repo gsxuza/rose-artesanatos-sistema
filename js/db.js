@@ -87,6 +87,7 @@ const STATE_URL = '/api/state';
 const CACHE_KEY = 'rose_v2_db';
 
 let _saveTimer     = null;   // debounce das gravações
+let _retryTimer    = null;   // retry de escrita após falha de rede
 let _lastMutation  = 0;      // timestamp da última edição local (evita clobber no refresh)
 let _lastUpdatedAt = null;   // updated_at do estado que já temos aplicado
 
@@ -178,6 +179,7 @@ function saveDB() {
 
 async function persistNow() {
   if (!isLoggedIn()) return;   // sem sessão, não tenta gravar
+  clearTimeout(_retryTimer);
   try {
     const res = await fetch(STATE_URL, {
       method:  'POST',
@@ -192,6 +194,8 @@ async function persistNow() {
     console.error('[DB] Falha ao sincronizar com a nuvem:', e);
     if (typeof showToast === 'function')
       showToast('Sem conexão — alterações salvas neste aparelho; sincronizo quando voltar.', 'danger');
+    // Reagenda uma nova tentativa para não perder as mudanças locais ao recarregar
+    _retryTimer = setTimeout(persistNow, 15000);
   }
 }
 
@@ -209,7 +213,8 @@ async function refreshDB() {
     if (!res.ok) return;
     const j = await res.json();
     if (!j.data || !j.updated_at) return;
-    if (j.updated_at === _lastUpdatedAt) return;   // nada mudou desde a última vez
+    // Normaliza para ms antes de comparar (evita falso-positivo por diferença de formato de string)
+    if (_lastUpdatedAt && new Date(j.updated_at).getTime() === new Date(_lastUpdatedAt).getTime()) return;
     _lastUpdatedAt = j.updated_at;
     DB = mergeDefaults(j.data);
     writeCache();
