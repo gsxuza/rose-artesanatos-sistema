@@ -112,7 +112,18 @@ function pedidosFiltrados() {
 }
 
 // Abre o modal para escolher quais dias entram na impressão.
-function imprimirPedidos() {
+// Antes de montar a lista, confere os cancelamentos no ML: a lista impressa é o
+// que a equipe vai separar, e imprimir uma venda já cancelada faz separarem um
+// produto que não vai sair.
+async function imprimirPedidos() {
+  const btn = document.activeElement;
+  if (DB.config.mlConnected) {
+    if (btn && btn.tagName === 'BUTTON') { btn.disabled = true; btn.textContent = '⏳ Conferindo...'; }
+    try { await sincronizarStatusML({ silencioso: true }); }
+    catch (e) { console.error('[Impressão] Falha ao conferir cancelamentos:', e); }
+    finally { if (btn && btn.tagName === 'BUTTON') { btn.disabled = false; btn.textContent = '🖨 Imprimir'; } }
+  }
+
   const list = pedidosFiltrados();
   if (!list.length) {
     showToast('Nenhum pedido para imprimir com este filtro.', 'danger');
@@ -275,12 +286,23 @@ function initDate() {
 
 /* ── Init ────────────────────────────────────────────────── */
 // Carrega os dados e liga o app. Só roda com uma sessão válida.
+// Um pedido cancelado no ML precisa sair da operação sozinho — ninguém vai
+// lembrar de clicar num botão antes de imprimir a lista de separação.
+const SYNC_INTERVALO_MS = 10 * 60 * 1000;   // 10 min
+
 async function startApp() {
   const ok = await loadDB();     // false = sessão recusada (login reexibido)
   if (ok === false) return;
   applyRecurring();
   renderAll();
-  verificarStatusML();
+
+  await verificarStatusML();                      // define se o ML está conectado
+  sincronizarStatusML({ silencioso: true });       // baixa cancelamentos ao abrir
+
+  clearInterval(startApp._sync);
+  startApp._sync = setInterval(() => {
+    if (isLoggedIn()) sincronizarStatusML({ silencioso: true });
+  }, SYNC_INTERVALO_MS);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

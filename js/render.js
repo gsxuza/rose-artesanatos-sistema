@@ -498,7 +498,8 @@ function renderMLBanner() {
   const c   = DB.config;
   const dot = qry('#ml-banner-dot');
   const txt = qry('#ml-banner-text');
-  const btn = qry('#btn-ml-import');
+  const btn  = qry('#btn-ml-import');
+  const sync = qry('#btn-ml-sync');
 
   // Rodapé da sidebar
   const sfDot = qry('#sf-dot');
@@ -510,12 +511,12 @@ function renderMLBanner() {
 
   if (c.mlConnected) {
     dot.className = 'ml-banner-dot on';
-    txt.innerHTML = '<b>Mercado Livre conectado.</b> Use o botão para importar novos pedidos.';
-    show(btn);
+    txt.innerHTML = '<b>Mercado Livre conectado.</b> Novos pedidos e cancelamentos são verificados automaticamente.';
+    show(btn); show(sync);
   } else {
     dot.className = 'ml-banner-dot';
     txt.innerHTML = 'Configure a integração com o <b>Mercado Livre</b> em Configurações.';
-    hide(btn);
+    hide(btn); hide(sync);
   }
 }
 
