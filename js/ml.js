@@ -55,22 +55,44 @@ async function importarML() {
   try {
     const data = await fetchBackend('/pedidos/importar', { method: 'POST' });
 
-    if (data.importados === 0) {
-      showToast('Nenhum pedido novo encontrado no ML.');
-      return;
+    // Baixa dos cancelamentos primeiro: pedidos que o ML já cancelou saem da
+    // operação e têm os lançamentos automáticos estornados, para não seguirem
+    // contando como venda nem aparecerem na lista de separação.
+    let cancelados = 0, valorEstornado = 0;
+    if (Array.isArray(data.cancelados) && data.cancelados.length) {
+      const refs = new Set(data.cancelados);
+      DB.pedidos
+        .filter(p => p.ml && refs.has(p.ml) && p.status !== STATUS_CANCELADO)
+        .forEach(p => {
+          const r = aplicarCancelamento(p, 'mercado-livre');
+          if (r) { cancelados++; valorEstornado += r.valorEstornado; }
+        });
     }
 
+    let novos = 0;
     if (Array.isArray(data.pedidos)) {
       const existingMLIds = new Set(DB.pedidos.map(p => p.ml).filter(Boolean));
-      const novos = data.pedidos.filter(p => !existingMLIds.has(p.ml));
-      novos.forEach(p => {
-        DB.pedidos.push({ ...p, criadoEm: p.criadoEm || today() });
-      });
+      data.pedidos
+        .filter(p => !existingMLIds.has(p.ml))
+        .forEach(p => {
+          DB.pedidos.push({ ...p, criadoEm: p.criadoEm || today() });
+          novos++;
+        });
+    }
+
+    if (!novos && !cancelados) {
+      showToast('Tudo em dia — nenhuma venda nova nem cancelamento no ML.');
+      return;
     }
 
     saveDB();
     renderAll();
-    showToast(`✅ ${data.importados} pedido(s) importado(s) do ML!`, 'success');
+
+    const partes = [];
+    if (novos)      partes.push(`${novos} pedido(s) importado(s)`);
+    if (cancelados) partes.push(`${cancelados} cancelamento(s) aplicado(s)`
+      + (valorEstornado > 0 ? ` — ${fmt(valorEstornado)} estornado(s)` : ''));
+    showToast('✅ ' + partes.join(' · '), cancelados ? '' : 'success');
   } catch (err) {
     console.error('[ML] Erro ao importar:', err);
     showToast('Erro ao importar pedidos. Verifique a conexão com o backend.', 'danger');

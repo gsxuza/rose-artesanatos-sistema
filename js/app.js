@@ -102,9 +102,13 @@ function showToast(msg, type = '') {
 
 /* ── Impressão da lista de pedidos ───────────────────────── */
 // Pedidos respeitando o filtro de status da tela.
+// Sem filtro explícito, os cancelados ficam de fora: a lista impressa é o que a
+// equipe vai separar e despachar — imprimir uma venda cancelada faz a operação
+// separar um produto que não vai sair.
 function pedidosFiltrados() {
   const filter = getInputValue('filter-ped-status') || '';
-  return filter ? DB.pedidos.filter(p => p.status === filter) : DB.pedidos.slice();
+  if (filter) return DB.pedidos.filter(p => p.status === filter);
+  return DB.pedidos.filter(p => p.status !== STATUS_CANCELADO);
 }
 
 // Abre o modal para escolher quais dias entram na impressão.

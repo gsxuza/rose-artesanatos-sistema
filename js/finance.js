@@ -93,6 +93,16 @@ function getAlerts() {
     alerts.push({ type: 'warning', icon: '💳',
       msg: `${pendentes.length} despesa(s) pendente(s) de pagamento neste mês` });
 
+  // Cancelamentos do mês: já foram estornados do financeiro, mas a operação
+  // precisa enxergar o volume — é dinheiro que se esperava e não entrou.
+  const cancelados = DB.pedidos.filter(p =>
+    p.status === STATUS_CANCELADO && monthKey(p.canceladoEm || '') === ym);
+  if (cancelados.length) {
+    const perdido = cancelados.reduce((s, p) => s + Number(p.valor || 0), 0);
+    alerts.push({ type: 'warning', icon: '⊘',
+      msg: `${cancelados.length} pedido(s) cancelado(s) neste mês — <b>${fmt(perdido)}</b> que deixaram de entrar` });
+  }
+
   return alerts;
 }
 

@@ -524,6 +524,14 @@ tbody td {
 .b-critico    { background: var(--red-bg);   color: var(--red); }
 .b-auto       { background: var(--blue-bg);  color: var(--blue); }
 .b-recorr     { background: #F0E8F8; color: #6030A0; }
+.b-cancelado  { background: var(--red-bg);   color: var(--red); }
+
+/* ── PEDIDO CANCELADO ── */
+.row-cancelada td { background: #FCF4F4; color: var(--text-muted); }
+.row-cancelada:hover td { background: #F8ECEC; }
+.row-cancelada .sku-chip { opacity: .7; text-decoration: line-through; }
+.cancel-origem { font-size: 10.5px; color: var(--text-muted); margin-top: 3px; }
+.group-canc { color: var(--red); }
 
 /* ── LOGIN ── */
 .login-overlay {
