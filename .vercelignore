@@ -1,0 +1,6 @@
+# Fora do deploy: nada aqui é servido nem executado em produção.
+# Mantém o Playwright e os testes longe do build da Vercel.
+tests/
+supabase/
+README.md
+GUIA-ML-ACESSO.md

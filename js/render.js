@@ -43,12 +43,16 @@ function renderDashboard() {
   const despesa = getDespesasMes(ym);
   const lucro   = receita - despesa;
   const margem  = receita > 0 ? lucro / receita * 100 : 0;
-  const total   = DB.pedidos.length;
-  const despPed = DB.pedidos.filter(p => p.status === 'despachado').length;
-  const hoje    = DB.pedidos.filter(p => (p.criadoEm || '').startsWith(today())).length;
+  // Cancelados ficam fora da contagem operacional e aparecem à parte.
+  const ativos    = DB.pedidos.filter(p => p.status !== STATUS_CANCELADO);
+  const canc      = DB.pedidos.length - ativos.length;
+  const total     = ativos.length;
+  const despPed   = ativos.filter(p => p.status === 'despachado').length;
+  const hoje      = ativos.filter(p => (p.criadoEm || '').startsWith(today())).length;
 
   setText('kpi-pedidos',      total);
-  setText('kpi-pedidos-sub',  `${hoje} novo(s) hoje · ${despPed} despachado(s)`);
+  setText('kpi-pedidos-sub',  `${hoje} novo(s) hoje · ${despPed} despachado(s)`
+    + (canc ? ` · ${canc} cancelado(s)` : ''));
   setText('kpi-receita',      fmtK(receita));
   setText('kpi-receita-sub',  `${DB.receitas.filter(r => monthKey(r.data)===ym).length} entradas este mês`);
   setText('kpi-despesa',      fmtK(despesa));
@@ -57,8 +61,8 @@ function renderDashboard() {
   setText('kpi-resultado-sub', `margem ${margem.toFixed(1)}%`);
   style('kpi-resultado', 'color', lucro >= 0 ? 'var(--green)' : 'var(--red)');
 
-  // Pedidos recentes
-  const recent = [...DB.pedidos].reverse().slice(0, 5);
+  // Pedidos recentes (só os que ainda estão na operação)
+  const recent = [...ativos].reverse().slice(0, 5);
   const tbody  = qry('#dash-tbody');
   const empty  = qry('#dash-empty');
   if (recent.length && tbody) {
@@ -120,8 +124,19 @@ function renderPedidos() {
     return;
   }
 
-  const rowHTML = (p, i) => `
-      <tr>
+  const rowHTML = (p, i) => {
+    const cancelado = p.status === STATUS_CANCELADO;
+    const acoes = cancelado
+      ? `<button class="btn btn-ghost btn-sm" title="Reabrir pedido cancelado"
+           onclick="reabrirPedido('${p.id}')">↺ Reabrir</button>`
+      : `${p.status !== 'despachado'
+            ? `<button class="btn btn-ghost btn-sm" title="Avançar status"
+                onclick="avancarPedido('${p.id}')">→ Avançar</button>` : ''}
+         <button class="btn btn-danger-outline btn-sm" title="Cancelar pedido"
+           onclick="cancelarPedido('${p.id}')">⊘ Cancelar</button>`;
+
+    return `
+      <tr${cancelado ? ' class="row-cancelada"' : ''}>
         <td>${i + 1}</td>
         <td><span class="sku-chip">${escapeHTML(p.ml || '-')}</span></td>
         <td>
@@ -131,24 +146,32 @@ function renderPedidos() {
         <td>${p.qtd || 1}</td>
         <td>${escapeHTML(p.resp || '-')}</td>
         <td>${fmt(p.valor)}</td>
-        <td>${badge(p.status)}</td>
+        <td>
+          ${badge(p.status)}
+          ${cancelado && p.motivoCancel === 'mercado-livre'
+            ? '<div class="cancel-origem">via Mercado Livre</div>' : ''}
+        </td>
         <td>
           <div class="btn-group">
-            ${p.status !== 'despachado'
-              ? `<button class="btn btn-ghost btn-sm" title="Avançar status"
-                  onclick="avancarPedido('${p.id}')">→ Avançar</button>` : ''}
-            <button class="btn btn-danger-outline btn-sm" onclick="removerPedido('${p.id}')">✕</button>
+            ${acoes}
+            <button class="btn btn-danger-outline btn-sm" title="Remover do sistema"
+              onclick="removerPedido('${p.id}')">✕</button>
           </div>
         </td>
       </tr>`;
+  };
 
   tbody.innerHTML = groupPedidosByDate(list).map(([data, items]) => {
-    const soma = items.reduce((s, p) => s + Number(p.valor || 0), 0);
+    // Cancelados não entram no total do dia — o valor do dia é o que de fato vale.
+    const ativos = items.filter(p => p.status !== STATUS_CANCELADO);
+    const canc   = items.length - ativos.length;
+    const soma   = ativos.reduce((s, p) => s + Number(p.valor || 0), 0);
     const header = `
       <tr class="group-row">
         <td colspan="8">
           <span class="group-date">${formatDateFull(data)}</span>
-          <span class="group-meta">${items.length} pedido(s) · ${fmt(soma)}</span>
+          <span class="group-meta">${ativos.length} pedido(s) · ${fmt(soma)}${
+            canc ? ` · <span class="group-canc">${canc} cancelado(s)</span>` : ''}</span>
         </td>
       </tr>`;
     return header + items.map((p, i) => rowHTML(p, i)).join('');
@@ -475,7 +498,8 @@ function renderMLBanner() {
   const c   = DB.config;
   const dot = qry('#ml-banner-dot');
   const txt = qry('#ml-banner-text');
-  const btn = qry('#btn-ml-import');
+  const btn  = qry('#btn-ml-import');
+  const sync = qry('#btn-ml-sync');
 
   // Rodapé da sidebar
   const sfDot = qry('#sf-dot');
@@ -487,12 +511,12 @@ function renderMLBanner() {
 
   if (c.mlConnected) {
     dot.className = 'ml-banner-dot on';
-    txt.innerHTML = '<b>Mercado Livre conectado.</b> Use o botão para importar novos pedidos.';
-    show(btn);
+    txt.innerHTML = '<b>Mercado Livre conectado.</b> Novos pedidos e cancelamentos são verificados automaticamente.';
+    show(btn); show(sync);
   } else {
     dot.className = 'ml-banner-dot';
     txt.innerHTML = 'Configure a integração com o <b>Mercado Livre</b> em Configurações.';
-    hide(btn);
+    hide(btn); hide(sync);
   }
 }
 

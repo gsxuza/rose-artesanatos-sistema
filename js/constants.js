@@ -3,13 +3,18 @@
 // Única fonte de verdade para valores fixos do sistema
 // ════════════════════════════════════════════════════════════
 
+// Fluxo normal do pedido. "cancelado" fica de fora de propósito: é um estado
+// terminal que interrompe o fluxo, não mais uma etapa dele.
 const STATUS_FLOW = ['pendente', 'separando', 'embalado', 'despachado'];
+
+const STATUS_CANCELADO = 'cancelado';
 
 const STATUS_BADGES = {
   pendente:   ['b-pendente',   'Pendente'],
   separando:  ['b-separando',  'Separando'],
   embalado:   ['b-embalado',   'Embalado'],
   despachado: ['b-despachado', 'Despachado'],
+  cancelado:  ['b-cancelado',  'Cancelado'],
   pago:       ['b-pago',       'Pago'],
   pendpag:    ['b-pendpag',    'Pendente'],
   ok:         ['b-ok',         'OK'],

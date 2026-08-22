@@ -19,3 +19,6 @@ Thumbs.db
 
 # Build
 dist/
+
+# Prints gerados pelos testes
+tests/*.png

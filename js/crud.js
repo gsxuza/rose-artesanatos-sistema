@@ -29,6 +29,10 @@ function salvarPedido() {
 function avancarPedido(id) {
   const p   = DB.pedidos.find(x => x.id === id);
   if (!p) return;
+  if (p.status === STATUS_CANCELADO) {
+    showToast('Pedido cancelado — não é possível avançar o status.', 'danger');
+    return;
+  }
   const idx = STATUS_FLOW.indexOf(p.status);
   if (idx < 0 || idx >= STATUS_FLOW.length - 1) return;
 
@@ -51,6 +55,69 @@ function removerPedido(id) {
   DB.pedidos = DB.pedidos.filter(p => p.id !== id);
   saveDB(); renderAll();
   showToast('Pedido removido.', 'danger');
+}
+
+/* ── Cancelamento ────────────────────────────────────────── */
+// Marca o pedido como cancelado e desfaz os lançamentos automáticos que ele
+// tinha gerado ao ser despachado (receita da venda, taxa ML e embalagem).
+// Sem isso, uma venda cancelada continuaria inflando a receita do mês.
+// O pedido é mantido na base — cancelado, não apagado — para que a operação
+// enxergue o histórico e ele não volte na próxima importação.
+// Retorna o que foi estornado, para o aviso ao usuário.
+function aplicarCancelamento(p, motivo) {
+  if (!p || p.status === STATUS_CANCELADO) return null;
+
+  const receitasEstornadas = DB.receitas.filter(r => r.origem === 'auto' && r.pedidoId === p.id);
+  const despesasEstornadas = DB.despesas.filter(d => d.auto && d.pedidoId === p.id);
+  const valorEstornado = receitasEstornadas.reduce((s, r) => s + Number(r.valor || 0), 0);
+
+  DB.receitas = DB.receitas.filter(r => !(r.origem === 'auto' && r.pedidoId === p.id));
+  DB.despesas = DB.despesas.filter(d => !(d.auto && d.pedidoId === p.id));
+
+  p.statusAnterior = p.status;
+  p.status         = STATUS_CANCELADO;
+  p.canceladoEm    = today();
+  p.motivoCancel   = motivo || 'manual';
+
+  return {
+    valorEstornado,
+    lancamentos: receitasEstornadas.length + despesasEstornadas.length,
+  };
+}
+
+function cancelarPedido(id) {
+  const p = DB.pedidos.find(x => x.id === id);
+  if (!p) return;
+  if (p.status === STATUS_CANCELADO) { showToast('Este pedido já está cancelado.', 'danger'); return; }
+
+  const aviso = p.status === 'despachado'
+    ? `\n\nATENÇÃO: este pedido já foi despachado. A receita de ${fmt(p.valor)} e as despesas automáticas dele serão estornadas.`
+    : '';
+  if (!confirm(`Cancelar o pedido ${p.ml}?${aviso}`)) return;
+
+  const r = aplicarCancelamento(p, 'manual');
+  saveDB(); renderAll();
+  showToast(r && r.lancamentos
+    ? `Pedido ${p.ml} cancelado. ${fmt(r.valorEstornado)} estornado(s) do financeiro.`
+    : `Pedido ${p.ml} cancelado.`, 'danger');
+}
+
+// Reabre um pedido cancelado por engano, devolvendo-o ao status anterior.
+// Os lançamentos financeiros não voltam sozinhos: se ele for despachado de
+// novo, são gerados na hora do despacho.
+function reabrirPedido(id) {
+  const p = DB.pedidos.find(x => x.id === id);
+  if (!p || p.status !== STATUS_CANCELADO) return;
+  if (!confirm(`Reabrir o pedido ${p.ml}?`)) return;
+
+  const anterior = p.statusAnterior && p.statusAnterior !== STATUS_CANCELADO
+    ? p.statusAnterior : STATUS_FLOW[0];
+  p.status = anterior === 'despachado' ? 'embalado' : anterior;
+  delete p.canceladoEm;
+  delete p.motivoCancel;
+  delete p.statusAnterior;
+  saveDB(); renderAll();
+  showToast(`Pedido ${p.ml} reaberto.`, 'success');
 }
 
 /* ── Estoque ─────────────────────────────────────────────── */

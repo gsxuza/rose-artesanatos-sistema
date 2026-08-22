@@ -55,27 +55,132 @@ async function importarML() {
   try {
     const data = await fetchBackend('/pedidos/importar', { method: 'POST' });
 
-    if (data.importados === 0) {
-      showToast('Nenhum pedido novo encontrado no ML.');
-      return;
+    // Baixa dos cancelamentos primeiro: pedidos que o ML já cancelou saem da
+    // operação e têm os lançamentos automáticos estornados, para não seguirem
+    // contando como venda nem aparecerem na lista de separação.
+    let cancelados = 0, valorEstornado = 0;
+    if (Array.isArray(data.cancelados) && data.cancelados.length) {
+      const refs = new Set(data.cancelados);
+      DB.pedidos
+        .filter(p => p.ml && refs.has(p.ml) && p.status !== STATUS_CANCELADO)
+        .forEach(p => {
+          const r = aplicarCancelamento(p, 'mercado-livre');
+          if (r) { cancelados++; valorEstornado += r.valorEstornado; }
+        });
     }
 
+    let novos = 0;
     if (Array.isArray(data.pedidos)) {
       const existingMLIds = new Set(DB.pedidos.map(p => p.ml).filter(Boolean));
-      const novos = data.pedidos.filter(p => !existingMLIds.has(p.ml));
-      novos.forEach(p => {
-        DB.pedidos.push({ ...p, criadoEm: p.criadoEm || today() });
-      });
+      data.pedidos
+        .filter(p => !existingMLIds.has(p.ml))
+        .forEach(p => {
+          DB.pedidos.push({ ...p, criadoEm: p.criadoEm || today() });
+          novos++;
+        });
+    }
+
+    if (!novos && !cancelados) {
+      showToast('Tudo em dia — nenhuma venda nova nem cancelamento no ML.');
+      return;
     }
 
     saveDB();
     renderAll();
-    showToast(`✅ ${data.importados} pedido(s) importado(s) do ML!`, 'success');
+
+    const partes = [];
+    if (novos)      partes.push(`${novos} pedido(s) importado(s)`);
+    if (cancelados) partes.push(`${cancelados} cancelamento(s) aplicado(s)`
+      + (valorEstornado > 0 ? ` — ${fmt(valorEstornado)} estornado(s)` : ''));
+    showToast('✅ ' + partes.join(' · '), cancelados ? '' : 'success');
   } catch (err) {
     console.error('[ML] Erro ao importar:', err);
     showToast('Erro ao importar pedidos. Verifique a conexão com o backend.', 'danger');
   } finally {
     if (btn) { btn.textContent = '⬇ Importar Pedidos'; btn.disabled = false; }
+  }
+}
+
+/* ── Sincronização de status dos pedidos ─────────────────── */
+// Pergunta ao ML como está CADA pedido que temos em aberto. A importação só
+// traz venda nova; um pedido já emitido pode ser cancelado depois — inclusive
+// depois de despachado. Sem essa checagem, o pedido continuaria na operação
+// (indo pra lista de separação) e contando como venda.
+const SYNC_LOTE      = 60;   // ids por requisição (o backend tem o mesmo teto)
+const SYNC_MAX_LOTES = 4;    // teto de segurança por rodada
+
+// Pedidos vindos do ML que ainda podem mudar de status, mais urgentes primeiro:
+// quem ainda não saiu é o que a equipe vai separar hoje.
+function pedidosParaSincronizar() {
+  return DB.pedidos
+    .filter(p => /^ML-\d+$/.test(p.ml || '') && p.status !== STATUS_CANCELADO)
+    .sort((a, b) => {
+      const abertoA = a.status !== 'despachado' ? 0 : 1;
+      const abertoB = b.status !== 'despachado' ? 0 : 1;
+      if (abertoA !== abertoB) return abertoA - abertoB;
+      return String(b.criadoEm || '').localeCompare(String(a.criadoEm || ''));
+    })
+    .slice(0, SYNC_LOTE * SYNC_MAX_LOTES);
+}
+
+// silencioso = rodada automática (não avisa quando não há nada novo).
+async function sincronizarStatusML({ silencioso = false } = {}) {
+  if (!DB.config.mlConnected) {
+    if (!silencioso) showToast('Conecte o Mercado Livre antes de verificar os pedidos.', 'danger');
+    return 0;
+  }
+
+  const alvo = pedidosParaSincronizar();
+  if (!alvo.length) {
+    if (!silencioso) showToast('Nenhum pedido do Mercado Livre para verificar.');
+    return 0;
+  }
+
+  const btn = document.getElementById('btn-ml-sync');
+  if (btn && !silencioso) { btn.textContent = '⏳ Verificando...'; btn.disabled = true; }
+
+  try {
+    const canceladas = new Set();
+    let erros = 0;
+
+    for (let i = 0; i < alvo.length; i += SYNC_LOTE) {
+      const ids = alvo.slice(i, i + SYNC_LOTE).map(p => p.ml);
+      const data = await fetchBackend('/pedidos/status', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ ids }),
+      });
+      erros += Number(data.erros || 0);
+      (data.statuses || []).forEach(s => { if (s.cancelado) canceladas.add(s.ml); });
+    }
+
+    let aplicados = 0, valorEstornado = 0;
+    DB.pedidos
+      .filter(p => canceladas.has(p.ml) && p.status !== STATUS_CANCELADO)
+      .forEach(p => {
+        const r = aplicarCancelamento(p, 'mercado-livre');
+        if (r) { aplicados++; valorEstornado += r.valorEstornado; }
+      });
+
+    if (aplicados) {
+      saveDB();
+      renderAll();
+      showToast(`⊘ ${aplicados} pedido(s) cancelado(s) no Mercado Livre`
+        + (valorEstornado > 0 ? ` — ${fmt(valorEstornado)} estornado(s)` : '')
+        + '. Saíram da lista de separação.', 'danger');
+    } else if (!silencioso) {
+      showToast(erros
+        ? `Nenhum cancelamento novo (${erros} pedido(s) não puderam ser consultados).`
+        : `✅ ${alvo.length} pedido(s) verificado(s) — nenhum cancelamento.`, erros ? 'danger' : 'success');
+    }
+
+    return aplicados;
+  } catch (err) {
+    console.error('[ML] Erro ao sincronizar status:', err);
+    if (!silencioso) showToast('Erro ao verificar os pedidos no Mercado Livre.', 'danger');
+    return 0;
+  } finally {
+    if (btn && !silencioso) { btn.textContent = '⟳ Verificar Cancelamentos'; btn.disabled = false; }
   }
 }
 
