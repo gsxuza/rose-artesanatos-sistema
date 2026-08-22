@@ -1,0 +1,12 @@
+{
+  "name": "rose-artesanatos-testes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Testes de ponta a ponta. Projeto npm SEPARADO de propósito: o Playwright não pode entrar no build da Vercel.",
+  "scripts": {
+    "test": "node e2e.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}
