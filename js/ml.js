@@ -53,7 +53,19 @@ async function importarML() {
   if (btn) { btn.textContent = '⏳ Importando...'; btn.disabled = true; }
 
   try {
-    const data = await fetchBackend('/pedidos/importar', { method: 'POST' });
+    // Manda o que o sistema já tem para o servidor devolver só o que falta.
+    // Quem manda no que já existe é o sistema, não uma tabela no servidor —
+    // assim, se algo se perdeu numa importação anterior, esta traz de volta.
+    const jaTenho = [
+      ...DB.pedidos.map(p => p.ml).filter(ml => /^ML-\d+$/.test(ml || '')),
+      ...(DB.mlIgnorados || []),
+    ];
+
+    const data = await fetchBackend('/pedidos/importar', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ jaTenho }),
+    });
 
     // Baixa dos cancelamentos primeiro: pedidos que o ML já cancelou saem da
     // operação e têm os lançamentos automáticos estornados, para não seguirem
@@ -81,7 +93,12 @@ async function importarML() {
     }
 
     if (!novos && !cancelados) {
-      showToast('Tudo em dia — nenhuma venda nova nem cancelamento no ML.');
+      // Diz POR QUE não veio nada. "Nenhum pedido novo" sem explicação é o que
+      // fazia parecer que a importação simplesmente não funcionava.
+      const vistos = Number(data.vistosNoML || 0);
+      showToast(vistos
+        ? `Tudo em dia — ${vistos} venda(s) no ML e todas já estão no sistema.`
+        : 'Nenhuma venda paga encontrada no Mercado Livre agora.');
       return;
     }
 

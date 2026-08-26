@@ -151,7 +151,61 @@ const titulo = (t) => console.log(`\n${B}${t}${F}`);
   ok('nada foi re-estornado',
      depois.receitas.length === antes.receitas.length && depois.despesas.length === antes.despesas.length);
 
-  titulo('11. Saúde da página');
+  titulo('11. Importação: traz o que falta e se conserta sozinha');
+  // O ML tem 6 vendas; o sistema tem 4 (ML-101..104). Devem entrar 2.
+  await page.click('#btn-ml-import');
+  await page.waitForTimeout(1500);
+  let L2 = await linhas();
+  ok('ML-105 importado', L2.some(l => l.ml === 'ML-105'), L2.map(l=>l.ml).join(', '));
+  ok('ML-106 importado', L2.some(l => l.ml === 'ML-106'));
+  ok('não duplicou os que já existiam',
+     L2.filter(l => l.ml === 'ML-101').length === 1);
+  ok('o sistema informou ao servidor o que já tinha',
+     (await servidor()).chamadas.ultimoJaTenho.includes('ML-101'));
+
+  // Importar de novo não pode duplicar nada.
+  const antesReimport = (await linhas()).length;
+  await page.click('#btn-ml-import');
+  await page.waitForTimeout(1500);
+  ok('importar de novo não duplica', (await linhas()).length === antesReimport,
+     `${antesReimport} → ${(await linhas()).length}`);
+
+  // O bug relatado: um pedido que sumiu do sistema tem de voltar.
+  // Simula a perda apagando direto do estado no servidor (como se a gravação
+  // tivesse falhado numa importação anterior).
+  await page.evaluate(async () => {
+    const r = await fetch('/_estado').then(x => x.json());
+    r.state.data.pedidos = r.state.data.pedidos.filter(p => p.ml !== 'ML-105');
+    // Espera a gravação terminar ANTES de recarregar, senão o reload aborta a
+    // requisição e o teste acusa uma falha de rede que não é do sistema.
+    await fetch('/api/state', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json',
+                Authorization:'Bearer ' + localStorage.getItem('rose_auth_token') },
+      body: JSON.stringify(r.state.data),
+    }).then(x => x.json());
+  });
+  await page.reload();
+  await page.waitForSelector('#login-overlay.open', { state:'hidden', timeout:8000 });
+  await page.waitForTimeout(900);
+  await page.click('.nav-link[data-sec="pedidos"]');
+  await page.waitForTimeout(300);
+  ok('o pedido perdido sumiu mesmo', !(await linhas()).some(l => l.ml === 'ML-105'));
+  await page.click('#btn-ml-import');
+  await page.waitForTimeout(1500);
+  ok('IMPORTAÇÃO RECUPERA o pedido perdido', (await linhas()).some(l => l.ml === 'ML-105'),
+     (await linhas()).map(l=>l.ml).join(', '));
+
+  titulo('12. Pedido removido de propósito não volta');
+  await page.click('#ped-tbody tr:has-text("ML-106") button:has-text("✕")');
+  await page.waitForTimeout(700);
+  ok('ML-106 removido', !(await linhas()).some(l => l.ml === 'ML-106'));
+  await page.click('#btn-ml-import');
+  await page.waitForTimeout(1500);
+  ok('ML-106 NÃO volta na importação', !(await linhas()).some(l => l.ml === 'ML-106'),
+     (await linhas()).map(l=>l.ml).join(', '));
+
+  titulo('13. Saúde da página');
   ok('nenhuma exceção de JavaScript', excecoesJS.length === 0, excecoesJS.slice(0,3).join(' | '));
   // Ruído esperado do ambiente: as fontes do Google podem estar bloqueadas em
   // sandbox/CI, e o 401 é o login errado que o próprio teste provoca.

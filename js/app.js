@@ -288,7 +288,25 @@ function initDate() {
 // Carrega os dados e liga o app. Só roda com uma sessão válida.
 // Um pedido cancelado no ML precisa sair da operação sozinho — ninguém vai
 // lembrar de clicar num botão antes de imprimir a lista de separação.
-const SYNC_INTERVALO_MS = 10 * 60 * 1000;   // 10 min
+//
+// O intervalo é por aparelho, e a equipe toda deixa o sistema aberto. Com
+// muitos aparelhos batendo junto, as chamadas ao ML se multiplicam e aumentam a
+// chance de duas renovarem o token ao mesmo tempo (o refresh do ML é de uso
+// único). Daí o intervalo folgado, o sorteio de até 5 min para os aparelhos não
+// baterem em bloco, e a pausa quando a aba não está à vista.
+const SYNC_INTERVALO_MS = 15 * 60 * 1000;
+const SYNC_JITTER_MS    = 5 * 60 * 1000;
+
+function agendarSync() {
+  clearTimeout(startApp._sync);
+  const espera = SYNC_INTERVALO_MS + Math.random() * SYNC_JITTER_MS;
+  startApp._sync = setTimeout(async () => {
+    if (isLoggedIn() && document.visibilityState === 'visible') {
+      await sincronizarStatusML({ silencioso: true });
+    }
+    agendarSync();
+  }, espera);
+}
 
 async function startApp() {
   const ok = await loadDB();     // false = sessão recusada (login reexibido)
@@ -296,13 +314,9 @@ async function startApp() {
   applyRecurring();
   renderAll();
 
-  await verificarStatusML();                      // define se o ML está conectado
-  sincronizarStatusML({ silencioso: true });       // baixa cancelamentos ao abrir
-
-  clearInterval(startApp._sync);
-  startApp._sync = setInterval(() => {
-    if (isLoggedIn()) sincronizarStatusML({ silencioso: true });
-  }, SYNC_INTERVALO_MS);
+  await verificarStatusML();                   // define se o ML está conectado
+  await sincronizarStatusML({ silencioso: true });   // baixa cancelamentos ao abrir
+  agendarSync();
 }
 
 document.addEventListener('DOMContentLoaded', () => {

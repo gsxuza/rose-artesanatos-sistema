@@ -11,6 +11,7 @@ const DEFAULT_DB = {
   despesasRecorrentes: [],
   receitas:            [],
   appliedRecurring:    [],  // meses (AAAA-MM) em que as recorrentes já foram aplicadas
+  mlIgnorados:         [],  // pedidos do ML removidos de propósito — não voltam na importação
   config: {
     mlConnected:    false,
     taxaML:         12,

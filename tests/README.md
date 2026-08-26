@@ -54,7 +54,9 @@ Ou seja: **rodar ou alterar os testes nunca afeta o site no ar.**
 | 8 | Dashboard: KPIs, pedidos recentes e alerta |
 | 9 | Cancelamento manual e reabertura |
 | 10 | Rodar de novo não duplica nem re-estorna |
-| 11 | Nenhuma exceção de JavaScript nem falha de rede inesperada |
+| 11 | **Importação traz o que falta e recupera pedido perdido** |
+| 12 | Pedido removido de propósito não volta na importação |
+| 13 | Nenhuma exceção de JavaScript nem falha de rede inesperada |
 
 O caso mais importante é o do **ML-104**: ele falha em toda consulta ao ML.
 O teste garante que uma falha de rede **nunca** vira cancelamento — apagar uma

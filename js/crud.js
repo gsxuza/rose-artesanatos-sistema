@@ -51,8 +51,17 @@ function avancarPedido(id) {
 }
 
 function removerPedido(id) {
+  const p = DB.pedidos.find(x => x.id === id);
   if (!confirm('Remover este pedido?')) return;
-  DB.pedidos = DB.pedidos.filter(p => p.id !== id);
+
+  // Pedido do ML removido de propósito fica anotado: a importação agora traz de
+  // volta tudo que falta no sistema, e sem isso ele reapareceria toda vez.
+  if (p && /^ML-\d+$/.test(p.ml || '')) {
+    DB.mlIgnorados = DB.mlIgnorados || [];
+    if (!DB.mlIgnorados.includes(p.ml)) DB.mlIgnorados.push(p.ml);
+  }
+
+  DB.pedidos = DB.pedidos.filter(x => x.id !== id);
   saveDB(); renderAll();
   showToast('Pedido removido.', 'danger');
 }

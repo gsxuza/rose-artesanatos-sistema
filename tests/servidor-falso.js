@@ -52,6 +52,16 @@ const estadoInicial = () => ({
   updated_at: new Date().toISOString(),
 });
 
+// Catálogo de vendas pagas no "ML". A 105 e a 106 ainda não estão no sistema.
+const VENDAS = [
+  { id:'101', sku:'ART-1', produto:'Caixa MDF',     valor:100 },
+  { id:'102', sku:'ART-2', produto:'Porta-Retrato', valor:200 },
+  { id:'103', sku:'ART-3', produto:'Bandeja',       valor:300 },
+  { id:'104', sku:'ART-4', produto:'Quadro',        valor:400 },
+  { id:'105', sku:'ART-6', produto:'Luminária',     valor:150 },
+  { id:'106', sku:'ART-7', produto:'Espelho',       valor:250 },
+];
+
 let STATE = estadoInicial();
 const CHAMADAS = { status: 0, importar: 0, idsConsultados: [] };
 
@@ -98,12 +108,24 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { statuses, erros, checados: ids.length });
   }
 
+  // Espelha api/pedidos/importar.js: devolve o que o sistema NÃO tem.
+  // VENDAS é o catálogo de vendas pagas no "ML".
   if (p === '/api/pedidos/importar') {
     if (!autorizado(req)) return json(res, 401, { error: 'Não autorizado.' });
     CHAMADAS.importar++;
+    const b = await corpo(req);
+    const jaTenho = new Set((b.jaTenho || []).map(String));
+    CHAMADAS.ultimoJaTenho = [...jaTenho];
+    const pagas = VENDAS.filter(v => !ML[v.id] || !ML[v.id].cancelado);
+    const pedidos = pagas.filter(v => !jaTenho.has('ML-' + v.id)).map(v => ({
+      id: v.id + '_ml', ml_id: v.id, ml: 'ML-' + v.id, sku: v.sku,
+      produto: v.produto, qtd: 1, resp: 'Daniel', valor: v.valor,
+      status: 'pendente', criadoEm: hoje,
+    }));
     return json(res, 200, {
-      importados: 0, pedidos: [],
+      importados: pedidos.length, pedidos,
       cancelados: Object.keys(ML).filter(id => ML[id].cancelado).map(id => 'ML-' + id),
+      vistosNoML: pagas.length, jaTinha: jaTenho.size,
     });
   }
 
